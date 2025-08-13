@@ -1,16 +1,16 @@
 import numpy as np
-import pandas as pd
 
 letters = ["A", "C", "G", "T"]
 mut_types = ["AC", "AG", "AT", "CA", "CG", "CT", "GA", "GC", "GT", "TA", "TC", "TG"]
 
 
 class GeneralLinearModel:
-    def __init__(self, included_factors, interacting=False, W=None, tau_squared=None):
+    def __init__(self, included_factors, interacting=False, W=None, tau_squared=None, ridge=0.1):
         self.included_factors = included_factors
         self.interacting = interacting
         self.W = W
         self.tau_squared = tau_squared
+        self.ridge = ridge
 
     def train(self, df_train):
         # Initialise dictionaries for model parameters and remaining variances
@@ -37,10 +37,9 @@ class GeneralLinearModel:
 
             # Create data matrix X, dimensions: (# of sites, # of parameters in model)
             X = self.create_data_matrix(df_mut_type.copy(), mut_type)
-
             # Fit a linear model as log_counts = w @ X using a mean squared loss with a l2-regularization
-            regularization_strength = 0.1
-            regularization_matrix = regularization_strength * np.identity(X.shape[1])
+
+            regularization_matrix = self.ridge * np.identity(X.shape[1])
             regularization_matrix[0, 0] = 0  # (don't regularize the offset term)
             w = np.linalg.inv(X.T @ X + regularization_matrix) @ X.T @ log_counts
 
@@ -50,23 +49,24 @@ class GeneralLinearModel:
             # Store remaining variance on log counts
             self.tau_squared[mut_type] = np.mean((log_counts - X @ w) ** 2)
 
+
     def create_data_matrix(self, mut_counts_df, mut_type):
         factor_cols = {}
 
         # Get global context
-        if mut_type in ["AT", "CG", "GC"]:
-            factor_cols["global_context"] = [
-                (mut_counts_df["nt_site"] > 21562).values.astype(int)
-            ]
-        elif mut_type in ["CT"]:
-            factor_cols["global_context"] = [
-                (mut_counts_df["nt_site"] > 13467).values.astype(int)
-            ]
-        else:
-            factor_cols["global_context"] = None
+        # if mut_type in ["AT", "CG", "GC"]:
+        #     factor_cols["global_context"] = [
+        #         (mut_counts_df["nt_site"] > 21562).values.astype(int)
+        #     ]
+        # elif mut_type in ["CT"]:
+        #     factor_cols["global_context"] = [
+        #         (mut_counts_df["nt_site"] > 13467).values.astype(int)
+        #     ]
+        # else:
+        # factor_cols["global_context"] = None
 
         # Get RNA structure
-        factor_cols["rna_structure"] = [mut_counts_df["unpaired"].values]
+        # factor_cols["rna_structure"] = [mut_counts_df["unpaired"].values]
 
         # Get left and right context
         left_context = mut_counts_df["motif"].apply(lambda x: x[0]).values
@@ -118,9 +118,16 @@ class GeneralLinearModel:
             X = self.create_data_matrix(df_mut_type.copy(), mut_type)
 
             # Compute the mean squared error of the fitted model on the training data
-            mean_sq_errs[mut_type] = np.mean(
-                (log_counts - (X @ self.W[mut_type]).flatten()) ** 2
-            )
+            preds = X @ self.W[mut_type]
+            print(f"preds shape: {preds.shape}, log_counts shape: {log_counts.shape}, res shape: {(log_counts - preds).shape}")
+            print(f"prev residuals shape: {(log_counts - (X @ self.W[mut_type]).flatten()).shape}")
+            mse = np.mean((log_counts - preds) ** 2)
+            print(f"se: {(log_counts - preds) ** 2}")
+            print(f"mse: {mse}")
+            print(f"prev se: {(log_counts - (X @ self.W[mut_type]).flatten()) ** 2}")
+
+            print(f"prev mse: {np.mean((log_counts - (X @ self.W[mut_type]).flatten()) ** 2)}")
+            mean_sq_errs[mut_type] = mse
 
         return mean_sq_errs
 

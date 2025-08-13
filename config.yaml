@@ -1,133 +1,98 @@
 # Configuration file for pipeline
 
-# specify one of the mutation-annotated trees in `mat_trees` as the "current" one that is
-# linked to by default as the best current estimates.
-current_mat: gisaid_2024-04-24
-
-# Links to dataframes from Jesse's repository: jbloomlab/SARS2-mut-fitness
-url_founder: https://raw.githubusercontent.com/jbloomlab/SARS2-mut-fitness/refs/heads/main/results_gisaid_2024-04-24/clade_founder_nts/clade_founder_nts.csv
-url_counts: https://media.githubusercontent.com/media/jbloomlab/SARS2-mut-fitness/refs/heads/main/results_gisaid_2024-04-24/expected_vs_actual_mut_counts/expected_vs_actual_mut_counts.csv
-
 # Mapping for grouping clades into clusters
 clade_cluster:
-  {'ancestral': ['20A', '20B', '20C', '20E', '20G', '21C'],
- '20H': ['20H'],
- '20I': ['20I'],
- '20J': ['20J'],
- '21I': ['21I'],
- '21J': ['21J'],
- '21K': ['21K'],
- 'BA.2': ['21L', '22C'],
- 'BA.4-5': ['22A', '22B'],
- 'BA.2.75': ['22D', '23C'],
- 'XBB': ['22F', '23A', '23B', '23D', '23E', '23F', '23H'],
- 'late': ['23I'],
- 'all': ['20A', '20B', '20C', '20E', '20G', '21C', '20H', '20I', '20J', '21I', '21J', '21K', '21L', '22A', '22B', '22C', '22D', '22F', '23A', '23B', '23C', '23D', '23E', '23F', '23H', '23I'],
+  {'all': ['root'],
  }
 
  # Mapping for grouping clades into clusters
 cluster_founder:
-  ancestral: 20A
-  20H: 20H
-  20I: 20I
-  20J: 20J
-  21I: 21I
-  21J: 21J
-  21K: 21K
-  BA.2: 21L
-  BA.4-5: 22A
-  BA.2.75: 22D
-  XBB: 22F
-  late: 23I
-  all: 20A
+  all: root
 
   # Orf1ab to Nsp numbering (amino-acid start in Orf1ab) from
 # https://github.com/theosanderson/Codon2Nucleotide/blob/main/src/App.js
-orf1ab_to_nsps:
-  nsp1: [1, 180]
-  nsp2: [181, 818]
-  nsp3: [819, 2763]
-  nsp4: [2764, 3263]
-  nsp5 (Mpro): [3264, 3569]
-  nsp6: [3570, 3859]
-  nsp7: [3860, 3942]
-  nsp8: [3943, 4140]
-  nsp9: [4141, 4253]
-  nsp10: [4254, 4392]
-  nsp12 (RdRp): [4393, 5324]
-  nsp13: [5325, 5925]
-  nsp14: [5926, 6452]
-  nsp15: [6453, 6798]
-  nsp16: [6799, 7096]
+# orf1ab_to_nsps:
+#   nsp1: [1, 180]
+#   nsp2: [181, 818]
+#   nsp3: [819, 2763]
+#   nsp4: [2764, 3263]
+#   nsp5 (Mpro): [3264, 3569]
+#   nsp6: [3570, 3859]
+#   nsp7: [3860, 3942]
+#   nsp8: [3943, 4140]
+#   nsp9: [4141, 4253]
+#   nsp10: [4254, 4392]
+#   nsp12 (RdRp): [4393, 5324]
+#   nsp13: [5325, 5925]
+#   nsp14: [5926, 6452]
+#   nsp15: [6453, 6798]
+#   nsp16: [6799, 7096]
 
 # How to handle nucleotide sites that overlap among sites: exclude them from
 # amino-acid fitness estimates or retain those sites in estimates. If retained, estimates
 # can be confounded by not knowing which gene the selection is acting on.
 gene_overlaps:
-  exclude:
-    - [ORF1a, ORF1ab]  # 11 sites of overlap near ribosomal frameshifting location
-    - [ORF7a, ORF7b]  # 1 site of overlap corresponding to ORF7a stop codon
-  retain:
-    - [N, ORF9b]  # ORF9b is a 291 out-of-frame overlapping reading frame in N
+  exclude: []
+  retain: []
+    # - [M2-1, M2-2] # add later
 
 # Pseudocount for calculating amino-acid fitnesses
 fitness_pseudocount: 0.5
 
 # Genes order on the viral genome
-genes: ['ORF1ab', 'nsp1', 'nsp2', 'nsp3', 'nsp4', 'nsp5 (Mpro)', 'nsp6', 'nsp7', 'nsp8', 'nsp9',
-  'nsp10', 'nsp12 (RdRp)', 'nsp13', 'nsp14', 'nsp15', 'nsp16', 'S', 'ORF3a', 'E', 'M', 'ORF6',
-  'ORF7a', 'ORF7b', 'ORF8', 'ORF9b', 'N', 'ORF10']
+genes: ['NS1', 'NS2', 'N', 'P', 'M', 'SH', 'G', 'F', 'M2-1', 'M2-2', 'L']
 
 # Define common names of Nexstrain clades
 clade_synonyms:
-  19A: B
-  20A: B.1
-  20B: B.1.1
-  20C: B.1.367
-  20E: B.1.177
-  20F: D.2
-  20G: B.1.2
-  20I: Alpha
-  20H: Beta
-  20J: Gamma
-  21C: Epsilon
-  21F: Iota
-  21I: Delta
-  21J: Delta
-  21K: Omicron BA.1
-  21L: Omicron BA.2
-  22A: Omicron BA.4
-  22B: Omicron BA.5
-  22C: Omicron BA.2.12.1
-  22D: Omicron BA.2.75
-  22E: Omicron BQ.1
-  22F: XBB
-  23A: XBB.1.5
-  23B: BB.1.16
-  23C: CH.1.1
-  23D: XBB.1.9
-  23E: XBB.2.3
-  23F: EG.5.1
-  23G: XBB.1.5.70
-  23H: HK.3
-  23I: BA.2.86
-  24A: JN.1
-  24B: JN.1.11.1
-  24C: KP.3
-  24D: XDV.1
-  24E: KP.3.1.1
-  24F: XEC
-  24G: KP.2.3
+    root: root
+#   19A: B
+#   20A: B.1
+#   20B: B.1.1
+#   20C: B.1.367
+#   20E: B.1.177
+#   20F: D.2
+#   20G: B.1.2
+#   20I: Alpha
+#   20H: Beta
+#   20J: Gamma
+#   21C: Epsilon
+#   21F: Iota
+#   21I: Delta
+#   21J: Delta
+#   21K: Omicron BA.1
+#   21L: Omicron BA.2
+#   22A: Omicron BA.4
+#   22B: Omicron BA.5
+#   22C: Omicron BA.2.12.1
+#   22D: Omicron BA.2.75
+#   22E: Omicron BQ.1
+#   22F: XBB
+#   23A: XBB.1.5
+#   23B: BB.1.16
+#   23C: CH.1.1
+#   23D: XBB.1.9
+#   23E: XBB.2.3
+#   23F: EG.5.1
+#   23G: XBB.1.5.70
+#   23H: HK.3
+#   23I: BA.2.86
+#   24A: JN.1
+#   24B: JN.1.11.1
+#   24C: KP.3
+#   24D: XDV.1
+#   24E: KP.3.1.1
+#   24F: XEC
+#   24G: KP.2.3
 
 # minimal domain for amino-acid fitness heatmap
 aa_fitness_heatmap_minimal_domain: [-6, 2] 
 
 # Default minimum expected count for amino-acid fitness estimates
-min_predicted_count: 10
+min_predicted_count: 1
 
 # minimum count for correlation calculation
-cluster_corr_min_count: 500000  
+cluster_corr_min_count: 1
 
-# For GitHub Pages docs of plots
-docs_url: https://neherlab.github.io/SARS2-refined-fitness  # base URL for GitHub pages site
+# # For GitHub Pages docs of plots
+# docs_url: https://neherlab.github.io/SARS2-refined-fitness  # base URL for GitHub pages site
 docs_plot_annotations: data/docs_plot_annotations.yaml  # lists plots and their annotations

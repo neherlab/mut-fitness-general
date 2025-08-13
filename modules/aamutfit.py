@@ -162,7 +162,7 @@ def merge_aa_df(aa_fit, aa_counts, explode_cols):
     aamut_fitness = pd.merge(
         aa_counts,
         aa_fit,
-        on=["cluster", *explode_cols, "subset_of_ORF1ab"],
+        on=["cluster", *explode_cols],
         how="inner",
     )
 

@@ -1,4 +1,4 @@
-name: SARS2-mut-fitness-v2
+name: RSV-mut-fitness
 channels:
   - conda-forge
   - bioconda
@@ -17,3 +17,5 @@ dependencies:
   - altair=4.2
   - markdown=3.6
   - biopython=1.79
+  - nbconvert>=6.5.0    # <-- Add this
+  - notebook            # <-- Add this to ensure compatibility with newer nbconvert

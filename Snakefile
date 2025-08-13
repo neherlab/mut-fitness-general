@@ -1,5 +1,5 @@
 """
-This pipeline fetches raw mutation counts from Jesse Bloom's GitHub repository
+This pipeline fetches raw mutation counts
 and produces refined fitness including estimates of uncertainty for each mutation
 in different subsets of the total sequence availability.
 """
@@ -7,78 +7,36 @@ in different subsets of the total sequence availability.
 import yaml
 
 configfile: "config.yaml"
-
 with open(config["docs_plot_annotations"]) as f:
     docs_plot_annotations = yaml.safe_load(f)
 
 rule all:
     """Target rule with desired output files."""
     input:
-        'results/master_tables/master_table_pre_omicron.csv',
-        'results/master_tables/master_table_omicron.csv',
+        'results/master_tables/master_table.csv',
         expand(
-            "docs/{plot}.html",
-            plot=list(docs_plot_annotations["plots"]) + ["index"],
+            "results/plots_for_docs/{plot}.html",
+            plot=list(docs_plot_annotations["plots"]),
         ),
-
-rule get_counts_table:
-    message:
-        "Downloading table with mutation counts from Jesse Bloom's GitHub repository"
-    params:
-        url_counts=config["url_counts"],
-    output:
-        csv='results/expected_vs_actual_counts.csv'
-    shell:
-        """
-            curl -k {params.url_counts} > {output.csv}
-        """
-
-rule get_clade_founder:
-    message:
-        "Downloading table with clade founder sequences from Jesse Bloom's GitHub repository"
-    params:
-        url_founder=config["url_founder"],
-    output:
-        csv='data/clade_founder.csv'
-    shell:
-        """
-            curl {params.url_founder} > {output.csv}
-        """
-
-rule annotate_counts:
-    message:
-        "Augment the counts table with RNA secondary structure pairing information, sequence context, and other features"
-    input:
-        rna_struct="data/lan_2022/41467_2022_28603_MOESM11_ESM.txt",
-        counts=rules.get_counts_table.output.csv,
-        clade_founder=rules.get_clade_founder.output.csv,
-    output:
-        counts_csv=temp("results/mut_counts_by_clade.csv"),
-        founder_csv="results/clade_founder.csv",
-    notebook:
-        "notebook/counts_by_clade.py.ipynb"
 
 rule curated_counts:
     message:
-        "Create training dataset to infer the General Linear Model for mutations in Omicron and pre-Omicron sequences"
+        "Create training dataset to infer the General Linear Model for mutations"
     input:
-        mut_counts=rules.annotate_counts.output.counts_csv,
-        clade_founder=rules.annotate_counts.output.founder_csv,
+        mut_counts='results/mut_counts_by_clade.csv',
+        # clade_founder=rules.annotate_counts.output.founder_csv,
     output:
-        pre_omicron="results/curated/curated_mut_counts_pre_omicron.csv",
-        omicron="results/curated/curated_mut_counts_omicron.csv"
+        outfile="results/curated/curated_mut_counts.csv",
     notebook:
-        "notebook/curate_counts_pre_post_omicron.py.ipynb"
+        "notebook/curate_counts.py.ipynb"
 
 rule master_table:
     message:
-        "Create tables with predicted mutation rates for each mutation in each of its contexts for pre-Omicron and Omicron sequences"
+        "Create tables with predicted mutation rates for each mutation in each of its contexts"
     input:
-        pre_omicron_counts=rules.curated_counts.output.pre_omicron,
-        omicron_counts=rules.curated_counts.output.omicron,
+        counts=rules.curated_counts.output.outfile,
     output:
-        pre_omicron_ms='results/master_tables/master_table_pre_omicron.csv',
-        omicron_ms='results/master_tables/master_table_omicron.csv',
+        ms='results/master_tables/master_table.csv',
     notebook:
         "notebook/master_tables.py.ipynb"
 
@@ -86,11 +44,10 @@ rule predicted_counts:
     message:
         "Add predicted counts, based on the inferred mutation rate model, to the table with observed mutation counts."
     input:
-        counts_df=rules.annotate_counts.output.counts_csv,
-        pre_omicron=rules.curated_counts.output.pre_omicron,
-        omicron=rules.curated_counts.output.omicron,
+        counts_df='results/mut_counts_by_clade.csv',
+        curated_counts_df=rules.curated_counts.output.outfile,
     output:
-        pred_count_csv=temp("results/pred_mut_counts_by_clade.csv"),
+        pred_count_csv="results/pred_mut_counts_by_clade.csv",
     notebook:
         "notebook/predicted_counts_by_clade.py.ipynb"
 
@@ -124,7 +81,7 @@ rule aamut_fitness:
     message:
         "Calculate estimates of the fitness effects of each amino acid substitution."
     params:
-        orf_to_nsps=config['orf1ab_to_nsps'],
+        # orf_to_nsps=config['orf1ab_to_nsps'],
         gene_ov=config['gene_overlaps'],
         genes=config['genes'],
         fit_pseudo=config['fitness_pseudocount'],
@@ -141,7 +98,7 @@ rule concat_aamut:
     input:
         aafit_csv=expand('results/aamut_fitness/{cluster}_aamut_fitness.csv', cluster=config['clade_cluster'].keys()),
     output:
-        aafit_concat=temp('results/aamut_fitness/aamut_fitness_by_cluster.csv'),
+        aafit_concat='results/aamut_fitness/aamut_fitness_by_cluster.csv',
     shell:
         """
         {{ 
@@ -157,15 +114,15 @@ rule aamut_plots:
         min_predicted_count = config['min_predicted_count'],
         clade_synonyms = config['clade_synonyms'],
         heatmap_minimal_domain = config['aa_fitness_heatmap_minimal_domain'],
-        orf1ab_to_nsps = config['orf1ab_to_nsps'],
+        # orf1ab_to_nsps = config['orf1ab_to_nsps'],
         clade_cluster = config['clade_cluster'],
         cluster_founder = config['cluster_founder'],
         cluster_corr_min_count = config['cluster_corr_min_count'],
     input:
-        clade_founder_nts=rules.get_clade_founder.output.csv,
+        clade_founder_nts="data/clade_founder.csv",
         aamut_by_cluster=rules.concat_aamut.output.aafit_concat,
     output:
-        outdir=temp(directory('results/aamut_fitness/plots'))
+        outdir=directory('results/aamut_fitness/plots')
     notebook:
         'notebook/aamut_plots.py.ipynb'
 
@@ -174,11 +131,9 @@ rule aggregate_plots_for_docs:
     input:
         aa_fitness_plots_dir=rules.aamut_plots.output.outdir,
     output:
-        temp(
-            expand(
-                "results/plots_for_docs/{plot}.html",
-                plot=docs_plot_annotations["plots"],
-            )
+        expand(
+            "results/plots_for_docs/{plot}.html",
+            plot=docs_plot_annotations["plots"],
         ),
     params:
         plotsdir="results/plots_for_docs",
@@ -187,42 +142,42 @@ rule aggregate_plots_for_docs:
         mkdir -p {params.plotsdir}
         rm -f {params.plotsdir}/*
         cp {input.aa_fitness_plots_dir}/*.html {params.plotsdir}
-        """
+#         """
     
-rule format_plot_for_docs:
-    message:
-        "Format a specific plot for the GitHub pages docs"
-    input:
-        plot=os.path.join(rules.aggregate_plots_for_docs.params.plotsdir, "{plot}.html"),
-        script="scripts/format_altair_html.py",
-    output:
-        plot="docs/{plot}.html",
-        markdown=temp("results/plots_for_docs/{plot}.md"),
-    params:
-        annotations=lambda wc: docs_plot_annotations["plots"][wc.plot],
-        url=config["docs_url"],
-        legend_suffix=docs_plot_annotations["legend_suffix"],
-    shell:
-        """
-        echo "## {params.annotations[title]}\n" > {output.markdown}
-        echo "{params.annotations[legend]}\n\n" >> {output.markdown}
-        echo "{params.legend_suffix}" >> {output.markdown}
-        python {input.script} \
-            --chart {input.plot} \
-            --markdown {output.markdown} \
-            --site {params.url} \
-            --title "{params.annotations[title]}" \
-            --description "{params.annotations[title]}" \
-            --output {output.plot}
-        """
+# rule format_plot_for_docs:
+#     message:
+#         "Format a specific plot for the GitHub pages docs"
+#     input:
+#         plot=os.path.join(rules.aggregate_plots_for_docs.params.plotsdir, "{plot}.html"),
+#         script="scripts/format_altair_html.py",
+#     output:
+#         plot="docs/{plot}.html",
+#         markdown=temp("results/plots_for_docs/{plot}.md"),
+#     params:
+#         annotations=lambda wc: docs_plot_annotations["plots"][wc.plot],
+#         url=config["docs_url"],
+#         legend_suffix=docs_plot_annotations["legend_suffix"],
+#     shell:
+#         """
+#         echo "## {params.annotations[title]}\n" > {output.markdown}
+#         echo "{params.annotations[legend]}\n\n" >> {output.markdown}
+#         echo "{params.legend_suffix}" >> {output.markdown}
+#         python {input.script} \
+#             --chart {input.plot} \
+#             --markdown {output.markdown} \
+#             --site {params.url} \
+#             --title "{params.annotations[title]}" \
+#             --description "{params.annotations[title]}" \
+#             --output {output.plot}
+#         """
 
-rule docs_index:
-    message:
-        "Write index for GitHub Pages doc"
-    output:
-        html="docs/index.html",
-    params:
-        plot_annotations=docs_plot_annotations,
-        current_mat=config["current_mat"],
-    script:
-        "scripts/docs_index.py"
+# rule docs_index:
+#     message:
+#         "Write index for GitHub Pages doc"
+#     output:
+#         html="docs/index.html",
+#     params:
+#         plot_annotations=docs_plot_annotations,
+#         current_mat=config["current_mat"],
+#     script:
+#         "scripts/docs_index.py"

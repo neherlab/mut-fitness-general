@@ -7,16 +7,15 @@ from modules import glm
 
 # Nucleotide alphabet and mutations
 letters = ["A", "C", "G", "T"]
-mut_types = ["AC", "AG", "AT", "CA", "CG", "CT", "GA", "GC", "GT", "TA", "TC", "TG"]
+mut_types = [b1+b2 for b1 in letters for b2 in letters if b1 != b2]
 
 
-#
 class Rates:
     # Initialize all rates to zeros
-    def __init__(self, lb1=13467, lb2=21562):
-        unpaired = [0, 1]
+    def __init__(self,):
+        unpaired = [0]
         # light_switch = [l_min, l_max]
-        light_switch = [True, False]
+        light_switch = [False]
 
         unique_muts = []
 
@@ -40,21 +39,19 @@ class Rates:
                 "rate",
             ],
         )
-        self.lb1 = lb1
-        self.lb2 = lb2
 
     # Populate rates according to inferred GLM
     def populate_rates(self, count_df):
         # Infer GLM
         general_linear_model = glm.GeneralLinearModel(
-            ["global_context", "rna_structure", "local_context"]
+            # ["global_context", "rna_structure", "local_context"]
+            ["local_context"]
         )
         general_linear_model.train(count_df)
         s_max = count_df.nt_site.max()
-
         rates = self.rates
         rates["nt_site"] = rates["nt_site_before_boundary"].apply(
-            lambda x: 0 if x else s_max
+            lambda x: s_max
         )
 
         # Populate rates according to GLM
@@ -70,7 +67,6 @@ class Rates:
             )
 
         rates["predicted_count"] = rates["rate"]
-
         rates.drop(columns=["nt_site"], inplace=True)
 
         # Rescale counts by total number of mutations and number of synonymous sites
@@ -80,7 +76,8 @@ class Rates:
         rates.rate *= n_ss / tot_mut
 
         # Add column `condition` with tuple summary of mutation conditions
-        cond_cols = ["mut_type", "motif", "unpaired", "nt_site_before_boundary"]
+        # cond_cols = ["mut_type", "motif", "unpaired", "nt_site_before_boundary"]
+        cond_cols = ["mut_type", "motif"]
         rates["condition"] = rates[cond_cols].apply(tuple, axis=1)
 
     def predicted_counts(self, count_df_syn):
@@ -98,9 +95,10 @@ class Rates:
         count_dict = self.rates.set_index("condition")["predicted_count"].to_dict()
 
         # List of row-wise conditions
-        cond_list = np.column_stack(
-            [df["mut_type"], df["motif"], df["unpaired"], df["nt_site_before_boundary"]]
-        )
+        # cond_list = np.column_stack(
+        #     [df["mut_type"], df["motif"], df["unpaired"], df["nt_site_before_boundary"]]
+        # )
+        cond_list = np.column_stack([df["mut_type"], df["motif"]])
 
         # Vector of predicted counts
         pred_count = np.array(list(map(lambda x: count_dict[tuple(x)], cond_list)))
@@ -110,14 +108,18 @@ class Rates:
     def genome_composition(self, count_df_syn):
         gen_comp = np.array(
             self.rates.apply(
+                # lambda x: sum(
+                #     (x.mut_type == count_df_syn.mut_type)
+                #     & (x.motif == count_df_syn.motif)
+                #     & (x.unpaired == count_df_syn.unpaired)
+                #     & (
+                #         x.nt_site_before_boundary
+                #         == count_df_syn.nt_site_before_boundary
+                #     )
+                # ),
                 lambda x: sum(
                     (x.mut_type == count_df_syn.mut_type)
                     & (x.motif == count_df_syn.motif)
-                    & (x.unpaired == count_df_syn.unpaired)
-                    & (
-                        x.nt_site_before_boundary
-                        == count_df_syn.nt_site_before_boundary
-                    )
                 ),
                 axis=1,
             )
@@ -141,7 +143,8 @@ class Rates:
 
         emp_counts = (
             count_df.groupby(
-                ["mut_type", "motif", "unpaired", "nt_site_before_boundary"]
+                # ["mut_type", "motif", "unpaired", "nt_site_before_boundary"]
+                ["mut_type", "motif"]
             )
             .apply(lambda x: x.actual_count.to_numpy())
             .to_list()
@@ -175,7 +178,8 @@ class Rates:
 
         # List of row-wise conditions
         cond_list = np.column_stack(
-            [df["mut_type"], df["motif"], df["unpaired"], df["nt_site_before_boundary"]]
+            # [df["mut_type"], df["motif"], df["unpaired"], df["nt_site_before_boundary"]]
+            [df["mut_type"], df["motif"]]
         )
 
         # Vector of residuals counts
@@ -217,10 +221,7 @@ def add_predicted_count(train_df, count_df, clades):
 
 
 # Add predicted counts to `count_df` for all clades
-def add_predicted_count_all_clades(train_pre_o, train_o, count_df):
+def add_predicted_count_all_clades(train, count_df):
     clades = count_df.clade.unique()
-    clades_pre_o = clades[0:11]
-    clades_o = clades[11:]
 
-    add_predicted_count(train_pre_o, count_df, clades_pre_o)
-    add_predicted_count(train_o, count_df, clades_o)
+    add_predicted_count(train, count_df, clades)

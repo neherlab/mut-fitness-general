@@ -4,12 +4,10 @@
 legend_suffix: |
   See [Haddox H.K. et al. (2024)](https://doi.org/10.1101/2025.01.07.631013) for a paper describing the work.
 
-  See [https://github.com/neherlab/SARS2-mut-fitness-v2](https://github.com/neherlab/SARS2-mut-fitness-v2/) for full computer code, data and a short summary of the theoretical framework.
-
-  See [https://neherlab.github.io/SARS2-mut-fitness-v2/](https://neherlab.github.io/SARS2-mut-fitness-v2/) for links to all interactive plots.
+  See [https://github.com/neherlab/SARS2-mut-fitness-v2](https://github.com/neherlab/RSV-mut-fitness/) for full computer code, data and a short summary of the theoretical framework.
 
 # some information for the index page
-index_title: Interactive plots of estimated fitness effects of SARS-CoV-2 amino-acid mutations
+index_title: Interactive plots of estimated fitness effects of RSV amino-acid mutations
 index_abstract: |
   Fitness effects estimated from observed versus predicted counts as predicted by a general linear model.
 
@@ -127,49 +125,49 @@ plots:
   #     estimates for more mutations at lower confidence, and move it to the right to show
   #     estimates for fewer mutations at higher confidence.
 
-  cluster_corr_chart: &corr_template
-    title: correlation of fitness estimates for different clusters of viral clades
-    section: correlation
-    legend: |
-      Interactive plot of the correlation between fitness estimates made using different
-      subsets of the sequence data. Each point represents a fitness estimate for a
-      different amino-acid mutation. The Pearson correlation coefficient and the number
-      of mutations being correlated are shown in the upper left of the scatter plot.
+  # cluster_corr_chart: &corr_template
+  #   title: correlation of fitness estimates for different clusters of viral clades
+  #   section: correlation
+  #   legend: |
+  #     Interactive plot of the correlation between fitness estimates made using different
+  #     subsets of the sequence data. Each point represents a fitness estimate for a
+  #     different amino-acid mutation. The Pearson correlation coefficient and the number
+  #     of mutations being correlated are shown in the upper left of the scatter plot.
 
-      You can mouse over points for details.
+  #     You can mouse over points for details.
     
-      The *minimum predicted count* slider below the plot indicates how many expected counts of an
-      an amino acid we require before making a fitness estimate. Larger values yield more
-      accurate estimates but for fewer amino acids. So move the slider to the left to show
-      estimates for more amino acids at lower confidence, and move it to the right to show
-      estimates for fewer amino acids at higher confidence.
+  #     The *minimum predicted count* slider below the plot indicates how many expected counts of an
+  #     an amino acid we require before making a fitness estimate. Larger values yield more
+  #     accurate estimates but for fewer amino acids. So move the slider to the left to show
+  #     estimates for more amino acids at lower confidence, and move it to the right to show
+  #     estimates for fewer amino acids at higher confidence.
 
-      This plot only shows the cluster of clades with the largest numbers of sequences.
+  #     This plot only shows the cluster of clades with the largest numbers of sequences.
 
-      You can click/shift-click on specific genes in the legend below the plot to only
-      show mutations for that gene.
-  cluster_corr_chart_naive:
-    <<: *corr_template
-    title: correlation of naive fitness estimates for different clusters of viral clades
-    section: correlation
-    legend: |
-      Interactive plot of the correlation between naive fitness estimates made using different
-      subsets of the sequence data. Each point represents a fitness estimate for a
-      different amino-acid mutation. The Pearson correlation coefficient and the number
-      of mutations being correlated are shown in the upper left of the scatter plot.
+  #     You can click/shift-click on specific genes in the legend below the plot to only
+  #     show mutations for that gene.
+  # cluster_corr_chart_naive:
+  #   <<: *corr_template
+  #   title: correlation of naive fitness estimates for different clusters of viral clades
+  #   section: correlation
+  #   legend: |
+  #     Interactive plot of the correlation between naive fitness estimates made using different
+  #     subsets of the sequence data. Each point represents a fitness estimate for a
+  #     different amino-acid mutation. The Pearson correlation coefficient and the number
+  #     of mutations being correlated are shown in the upper left of the scatter plot.
 
-      You can mouse over points for details.
+  #     You can mouse over points for details.
     
-      The *minimum expected count* slider below the plot indicates how many predicted counts of an
-      an amino acid we require before making a fitness estimate. Larger values yield more
-      accurate estimates but for fewer amino acids. So move the slider to the left to show
-      estimates for more amino acids at lower confidence, and move it to the right to show
-      estimates for fewer amino acids at higher confidence.
+  #     The *minimum expected count* slider below the plot indicates how many predicted counts of an
+  #     an amino acid we require before making a fitness estimate. Larger values yield more
+  #     accurate estimates but for fewer amino acids. So move the slider to the left to show
+  #     estimates for more amino acids at lower confidence, and move it to the right to show
+  #     estimates for fewer amino acids at higher confidence.
 
-      This plot only shows the cluster of clades with the largest numbers of sequences.
+  #     This plot only shows the cluster of clades with the largest numbers of sequences.
 
-      You can click/shift-click on specific genes in the legend below the plot to only
-      show mutations for that gene.
+  #     You can click/shift-click on specific genes in the legend below the plot to only
+  #     show mutations for that gene.
   fit_corr_chart:
     <<: *corr_template
     title: correlation between novel and naive fitness estimates for different clusters of viral clades
@@ -283,7 +281,7 @@ plots:
   #   title: correlation of fitness estimates with Mpro (nsp5) deep mutational scanning (all phenotypes)
 
   # heatmaps of mutational effects
-  nsp1: &heatmap_template
+  NS1: &heatmap_template
     section: heatmap
     legend: |
       Interactive plot of fitnesses amino acids at each site estimated from the observed versus
@@ -312,82 +310,37 @@ plots:
       accurate estimates but for fewer amino acids. So move the slider to the left to show
       estimates for more amino acids at lower confidence, and move it to the right to show
       estimates for fewer amino acids at higher confidence.
-    title: nsp1 amino-acid fitnesses
-  nsp2:
+    title: NS1 amino-acid fitnesses
+  NS2:
     <<: *heatmap_template
-    title: nsp2 amino-acid fitnesses
-  nsp3:
-    <<: *heatmap_template
-    title: nsp3 amino-acid fitnesses
-  nsp4:
-    <<: *heatmap_template
-    title: nsp4 amino-acid fitnesses
-  nsp5:
-    <<: *heatmap_template
-    title: nsp5 (Mpro) amino-acid fitnesses
-  nsp6:
-    <<: *heatmap_template
-    title: nsp6 amino-acid fitnesses
-  nsp7:
-    <<: *heatmap_template
-    title: nsp7 amino-acid fitnesses
-  nsp8:
-    <<: *heatmap_template
-    title: nsp8 amino-acid fitnesses
-  nsp9:
-    <<: *heatmap_template
-    title: nsp9 amino-acid fitnesses
-  nsp10:
-    <<: *heatmap_template
-    title: nsp10 amino-acid fitnesses
-  nsp12:
-    <<: *heatmap_template
-    title: nsp12 (RdRp) amino-acid fitnesses
-  nsp13:
-    <<: *heatmap_template
-    title: nsp13 (helicase) amino-acid fitnesses
-  nsp14:
-    <<: *heatmap_template
-    title: nsp14 (ExoN) amino-acid fitnesses
-  nsp15:
-    <<: *heatmap_template
-    title: nsp15 amino-acid fitnesses
-  nsp16:
-    <<: *heatmap_template
-    title: nsp16 amino-acid fitnesses
-  S:
-    <<: *heatmap_template
-    title: S (spike) amino-acid fitnesses
-  ORF3a:
-    <<: *heatmap_template
-    title: ORF3a amino-acid fitnesses
-  E:
-    <<: *heatmap_template
-    title: E (envelope) amino-acid fitnesses
-  M:
-    <<: *heatmap_template
-    title: M (membrane) amino-acid fitnesses
-  ORF6:
-    <<: *heatmap_template
-    title: ORF6 amino-acid fitnesses
-  ORF7a:
-    <<: *heatmap_template
-    title: ORF7a amino-acid fitnesses
-  ORF7b:
-    <<: *heatmap_template
-    title: ORF7b amino-acid fitnesses
-  ORF8:
-    <<: *heatmap_template
-    title: ORF8 amino-acid fitnesses
-  ORF9b:
-    <<: *heatmap_template
-    title: ORF9b amino-acid fitnesses
+    title: NS2 amino-acid fitnesses
   N:
     <<: *heatmap_template
-    title: N (nucleocapsid) amino-acid fitnesses
-  ORF10:
+    title: N amino-acid fitnesses
+  P:
     <<: *heatmap_template
-    title: ORF10 amino-acid fitnesses
+    title: P amino-acid fitnesses
+  M:
+    <<: *heatmap_template
+    title: M amino-acid fitnesses
+  SH:
+    <<: *heatmap_template
+    title: SH amino-acid fitnesses
+  G:
+    <<: *heatmap_template
+    title: G amino-acid fitnesses
+  F:
+    <<: *heatmap_template
+    title: F amino-acid fitnesses
+  M2-1:
+    <<: *heatmap_template
+    title: M2-1 amino-acid fitnesses
+  M2-2:
+    <<: *heatmap_template
+    title: M2-2 amino-acid fitnesses
+  L:
+    <<: *heatmap_template
+    title: L amino-acid fitnesses
 
   # fitness_vs_terminal:
   #   title: fitness effects versus number of descendant sequences
