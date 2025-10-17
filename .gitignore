@@ -3,9 +3,11 @@ __pycache__
 /cluster
 /log
 /data/clade_founder.csv
-/results/expected_vs_actual_counts.csv
-/results/clade_founder.csv
-/results/mut_counts_by_clade.csv
-/results/pred_mut_counts_by_clade.csv
-/results/ntmut_fitness/*ntmut_counts.csv
+/results*/expected_vs_actual_counts.csv
+/results*/clade_founder.csv
+/results*/mut_counts_by_clade.csv
+/results*/pred_mut_counts_by_clade.csv
+/results*/ntmut_fitness/*ntmut_counts.csv
 .snakemake
+results*/exploratory_figures/
+results*/

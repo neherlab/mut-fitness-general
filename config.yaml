@@ -9,6 +9,9 @@ clade_cluster:
 cluster_founder:
   all: root
 
+rsv_type: b
+
+output_dir: results_rsv_b
   # Orf1ab to Nsp numbering (amino-acid start in Orf1ab) from
 # https://github.com/theosanderson/Codon2Nucleotide/blob/main/src/App.js
 # orf1ab_to_nsps:

@@ -125,27 +125,27 @@ plots:
   #     estimates for more mutations at lower confidence, and move it to the right to show
   #     estimates for fewer mutations at higher confidence.
 
-  # cluster_corr_chart: &corr_template
-  #   title: correlation of fitness estimates for different clusters of viral clades
-  #   section: correlation
-  #   legend: |
-  #     Interactive plot of the correlation between fitness estimates made using different
-  #     subsets of the sequence data. Each point represents a fitness estimate for a
-  #     different amino-acid mutation. The Pearson correlation coefficient and the number
-  #     of mutations being correlated are shown in the upper left of the scatter plot.
+  cluster_corr_chart: &corr_template
+    title: correlation of fitness estimates for different clusters of viral clades
+    section: correlation
+    legend: |
+      Interactive plot of the correlation between fitness estimates made using different
+      subsets of the sequence data. Each point represents a fitness estimate for a
+      different amino-acid mutation. The Pearson correlation coefficient and the number
+      of mutations being correlated are shown in the upper left of the scatter plot.
 
-  #     You can mouse over points for details.
+      You can mouse over points for details.
     
-  #     The *minimum predicted count* slider below the plot indicates how many expected counts of an
-  #     an amino acid we require before making a fitness estimate. Larger values yield more
-  #     accurate estimates but for fewer amino acids. So move the slider to the left to show
-  #     estimates for more amino acids at lower confidence, and move it to the right to show
-  #     estimates for fewer amino acids at higher confidence.
+      The *minimum predicted count* slider below the plot indicates how many expected counts of an
+      an amino acid we require before making a fitness estimate. Larger values yield more
+      accurate estimates but for fewer amino acids. So move the slider to the left to show
+      estimates for more amino acids at lower confidence, and move it to the right to show
+      estimates for fewer amino acids at higher confidence.
 
-  #     This plot only shows the cluster of clades with the largest numbers of sequences.
+      This plot only shows the cluster of clades with the largest numbers of sequences.
 
-  #     You can click/shift-click on specific genes in the legend below the plot to only
-  #     show mutations for that gene.
+      You can click/shift-click on specific genes in the legend below the plot to only
+      show mutations for that gene.
   # cluster_corr_chart_naive:
   #   <<: *corr_template
   #   title: correlation of naive fitness estimates for different clusters of viral clades

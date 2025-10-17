@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os
 from glm import GeneralLinearModel
 from load import load_synonymous_muts
 import seaborn as sns
@@ -9,6 +9,7 @@ feature_labels = [
     "L=C", "L=G", "L=T",
     "R=C", "R=G", "R=T"
 ]
+res_path = "results_rsv_b"
 
 def collect_weight_matrix(model, mutation_types, feature_labels):
     weight_matrix = []
@@ -77,10 +78,13 @@ def plot_sequential_r_squared(mean_sq_err_dic):
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.0), ncol=3)
 
     plt.tight_layout()
-    plt.savefig('/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/results/exploratory_figures/R2_sequentially.pdf')
+    if not os.path.isdir(f'/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/{res_path}/exploratory_figures/'):
+        os.makedirs(f'/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/{res_path}/exploratory_figures/')
+
+    plt.savefig(f'/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/{res_path}/exploratory_figures/R2_sequentially.pdf')
     plt.show()
 
-df = load_synonymous_muts("/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/results/curated/curated_mut_counts.csv")
+df = load_synonymous_muts(f"/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/{res_path}/curated/curated_mut_counts.csv")
 
     # factors = ['global_context', 'rna_structure', 'local_context']
 factors = ['local_context']

@@ -5,28 +5,44 @@ in different subsets of the total sequence availability.
 """
 
 import yaml
+import os
 
 configfile: "config.yaml"
 with open(config["docs_plot_annotations"]) as f:
     docs_plot_annotations = yaml.safe_load(f)
 
+OD = config["output_dir"]
+
 rule all:
     """Target rule with desired output files."""
     input:
-        'results/master_tables/master_table.csv',
+        os.path.join(OD, "master_tables", "master_table.csv"),
         expand(
-            "results/plots_for_docs/{plot}.html",
+            os.path.join(OD, "plots_for_docs", "{plot}.html"),
             plot=list(docs_plot_annotations["plots"]),
         ),
+
+rule copy_input_files:
+    input:
+        mut_counts_src=lambda wc: f"/scicore/home/neher/kuznet0001/rsv_files/mutation_rates/{config['rsv_type']}/mut_counts_by_clade.csv",
+        clade_founder_src=lambda wc: f"/scicore/home/neher/kuznet0001/rsv_files/mutation_rates/{config['rsv_type']}/clade_founder.csv"
+    output:
+        mut_counts=os.path.join(OD, "mut_counts_by_clade.csv"),
+        clade_founder=os.path.join(OD, "clade_founder.csv")
+    run:
+        os.makedirs(OD, exist_ok=True)
+        shell("cp {input.mut_counts_src} {output.mut_counts}")
+        shell("cp {input.clade_founder_src} {output.clade_founder}")
+
 
 rule curated_counts:
     message:
         "Create training dataset to infer the General Linear Model for mutations"
     input:
-        mut_counts='results/mut_counts_by_clade.csv',
+        mut_counts=rules.copy_input_files.output.mut_counts,
         # clade_founder=rules.annotate_counts.output.founder_csv,
     output:
-        outfile="results/curated/curated_mut_counts.csv",
+        outfile=os.path.join(OD, "curated", "curated_mut_counts.csv"),
     notebook:
         "notebook/curate_counts.py.ipynb"
 
@@ -36,7 +52,7 @@ rule master_table:
     input:
         counts=rules.curated_counts.output.outfile,
     output:
-        ms='results/master_tables/master_table.csv',
+        ms=os.path.join(OD, "master_tables", "master_table.csv"),
     notebook:
         "notebook/master_tables.py.ipynb"
 
@@ -44,10 +60,10 @@ rule predicted_counts:
     message:
         "Add predicted counts, based on the inferred mutation rate model, to the table with observed mutation counts."
     input:
-        counts_df='results/mut_counts_by_clade.csv',
+        counts_df=rules.copy_input_files.output.mut_counts,
         curated_counts_df=rules.curated_counts.output.outfile,
     output:
-        pred_count_csv="results/pred_mut_counts_by_clade.csv",
+        pred_count_csv=os.path.join(OD, "pred_mut_counts_by_clade.csv"),
     notebook:
         "notebook/predicted_counts_by_clade.py.ipynb"
 
@@ -63,7 +79,7 @@ rule counts_cluster:
     input:
         counts_df=rules.predicted_counts.output.pred_count_csv,
     output:
-        cluster_counts=temp('results/ntmut_fitness/{cluster}_ntmut_counts.csv'),
+        cluster_counts=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_counts.csv"),
     notebook:
         "notebook/ntmut_counts_cluster.py.ipynb"
 
@@ -71,9 +87,9 @@ rule ntmut_fitness:
     message:
         "Calculate estimates of the fitness effects of each nucleotide mutation."
     input:
-        cluster_counts='results/ntmut_fitness/{cluster}_ntmut_counts.csv'
+        cluster_counts=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_counts.csv"),
     output:
-        ntfit_csv='results/ntmut_fitness/{cluster}_ntmut_fitness.csv',
+        ntfit_csv=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_fitness.csv"),
     notebook:
         'notebook/ntmut_fitness.py.ipynb'
 
@@ -86,9 +102,9 @@ rule aamut_fitness:
         genes=config['genes'],
         fit_pseudo=config['fitness_pseudocount'],
     input:
-        ntfit_csv='results/ntmut_fitness/{cluster}_ntmut_fitness.csv',
+        ntfit_csv=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_fitness.csv"),
     output:
-        aafit_csv='results/aamut_fitness/{cluster}_aamut_fitness.csv',
+        aafit_csv=os.path.join(OD, "aamut_fitness", "{cluster}_aamut_fitness.csv"),
     notebook:
         'notebook/aamut_fitness.py.ipynb'
 
@@ -96,9 +112,12 @@ rule concat_aamut:
     message:
         "Concatenating {{cluster}}_aamut_fitness.csv files",
     input:
-        aafit_csv=expand('results/aamut_fitness/{cluster}_aamut_fitness.csv', cluster=config['clade_cluster'].keys()),
+        aafit_csv=expand(
+            os.path.join(OD, "aamut_fitness", "{cluster}_aamut_fitness.csv"),
+            cluster=config['clade_cluster'].keys()
+        ),
     output:
-        aafit_concat='results/aamut_fitness/aamut_fitness_by_cluster.csv',
+        aafit_concat=os.path.join(OD, "aamut_fitness", "aamut_fitness_by_cluster.csv"),
     shell:
         """
         {{ 
@@ -119,10 +138,10 @@ rule aamut_plots:
         cluster_founder = config['cluster_founder'],
         cluster_corr_min_count = config['cluster_corr_min_count'],
     input:
-        clade_founder_nts="data/clade_founder.csv",
+        clade_founder_nts=rules.copy_input_files.output.clade_founder,
         aamut_by_cluster=rules.concat_aamut.output.aafit_concat,
     output:
-        outdir=directory('results/aamut_fitness/plots')
+        outdir=directory(os.path.join(OD, "aamut_fitness", "plots")),
     notebook:
         'notebook/aamut_plots.py.ipynb'
 
@@ -132,11 +151,11 @@ rule aggregate_plots_for_docs:
         aa_fitness_plots_dir=rules.aamut_plots.output.outdir,
     output:
         expand(
-            "results/plots_for_docs/{plot}.html",
+            os.path.join(OD, "plots_for_docs", "{plot}.html"),
             plot=docs_plot_annotations["plots"],
         ),
     params:
-        plotsdir="results/plots_for_docs",
+        plotsdir=os.path.join(OD, "plots_for_docs"),
     shell:
         """
         mkdir -p {params.plotsdir}
