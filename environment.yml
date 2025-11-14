@@ -1,4 +1,4 @@
-name: RSV-mut-fitness
+name: mut-fitness-env
 channels:
   - conda-forge
   - bioconda

@@ -1,24 +1,23 @@
 # Fitness effects of nucleotide and amino acid mutations updated with novel estimates of neutral rates.
 
 ## Overview
-This repository computes an updated estimate of the fitness effects of mutations of the RSV genome,
+This repository computes an updated estimate of the fitness effects of mutations of the given genome,
 based on SARS-CoV-2 work presented in this [paper](https://doi.org/10.1101/2025.01.07.631013) by H.K. Haddox, 
 G. Angehrn, L. Sesta, C. Jennings-Shaffer, S. Temple, J.G. Galloway, W.S. DeWitt, J.D. Bloom, [F.A. Matsen IV](https://matsen.fhcrc.org/), and [R.A. Neher](https://neherlab.org/).
 
 It builds upon and expand a previous approach to estimate viral fitness that can be found at [jbloomlab/SARS2-mut-fitness](https://github.com/jbloomlab/SARS2-mut-fitness/tree/main).
 
-The counts from the RSV mutation-annotated tree from Nextstrain (?) are used to accurately estimate the mutation rates according to:
+The counts from the mutation-annotated tree from Nextstrain are used to accurately estimate the mutation rates according to:
 
 * A site's local nucleotide context.
-* The base pairing in RNA secondary structure. (from ?)
-* The region of the genome the site belongs to. (we will check this)
+* (optional) The base pairing in RNA secondary structure.
+* (optional) The region of the genome the site belongs to.
 
 Fitness effects are subsequently estimated by comparing the actual observed counts to the one predicted from the
 inferred rates, within a Bayesian probabilistic framework that also provides uncertainties.
 
 ## References
 - Details about the computational framework can be found in the related [paper](https://doi.org/10.1101/2025.01.07.631013).
-- Data used as reference for RNA secondary structure are in [input study].
 - The original approach for estimating mutational fitness is presented in [Bloom & Neher](https://academic.oup.com/ve/article/9/2/vead055/7265011).
 
 ## Computational pipeline
@@ -28,9 +27,9 @@ Firstly, a customized [conda](https://docs.conda.io/) environment needs to be bu
 
     conda env create -f environment.yml
 
-This will create a [conda](https://docs.conda.io/) environment called `RSV-mut-fitness-v2`, that you need to activate:
+This will create a [conda](https://docs.conda.io/) environment called `mut-fitness-env`, that you need to activate:
 
-    conda activate RSV-mut-fitness-v2
+    conda activate mut-fitness-env
 
 The pipeline is managed by [snakemake](https://snakemake.readthedocs.io/) through a [Snakefile](Snakefile), whose configuration is defined in [config.yaml](config.yaml). To run the pipeline use:
 
@@ -42,12 +41,12 @@ The pipeline mainly relies on Python Jupyter notebooks to run. These can be foun
 
 ### Input
 
-The pipeline runs downstream from two files fetched directly from the [jbloomlab/SARS2-mut-fitness](https://github.com/jbloomlab/SARS2-mut-fitness/tree/main) GitHub repo:
+The pipeline runs downstream from two files at given paths:
 
-- Table of clade founders nucleotides [~/results_gisaid_2024-04-24/clade_founder_nts/clade_founder_nts.csv](https://github.com/jbloomlab/SARS2-mut-fitness/blob/main/results_gisaid_2024-04-24/clade_founder_nts/clade_founder_nts.csv).
-- Clade-wise table of counts [~/results_gisaid_2024-04-24/expected_vs_actual_mut_counts/expected_vs_actual_mut_counts.csv](https://github.com/jbloomlab/SARS2-mut-fitness/blob/main/results_gisaid_2024-04-24/expected_vs_actual_mut_counts/expected_vs_actual_mut_counts.csv).
+- Table of clade founders nucleotides, example for SARS-CoV-2: [~/results_gisaid_2024-04-24/clade_founder_nts/clade_founder_nts.csv](https://github.com/jbloomlab/SARS2-mut-fitness/blob/main/results_gisaid_2024-04-24/clade_founder_nts/clade_founder_nts.csv).
+- Clade-wise table of counts, example for SARS-CoV-2: [~/results_gisaid_2024-04-24/expected_vs_actual_mut_counts/expected_vs_actual_mut_counts.csv](https://github.com/jbloomlab/SARS2-mut-fitness/blob/main/results_gisaid_2024-04-24/expected_vs_actual_mut_counts/expected_vs_actual_mut_counts.csv).
 
-The related links are defined in the [config.yaml](config.yaml) file and can be changed to any version of the reference UShER tree.
+The related links are defined in the [config.yaml](config.yaml) file.
 
 The file containing the nucleotide pairing predictions from [sec structure study] is located at [./data/rna_structure](data/rna_structure/).
 
@@ -56,7 +55,7 @@ Ahead of the computation of mutational fitness effects, predicted and actual mut
 
 ### Output
 Files produced by the pipeline are saved into the [./results](results) folder. These are subsequently divided in the following subfolders:
-- [curated](results/curated/): the training datasets for the *General Linear Model* (GLM) producing the predicted counts. These are divided between pre and Omicron clades.
+- [curated](results/curated/): the training datasets for the *General Linear Model* (GLM) producing the predicted counts.
 - [master_tables](results/master_tables/): the reference models inferred from the training datasets, i.e. a site's context and the associated mutation rate.
 - [ntmut_fitness](results/ntmut_fitness/): files `{cluster}_ntmut_fitness.csv` for each cluster of clades with the nucleotide mutation fitness effects.
 - [aamut_fitness](results/aamut_fitness/): files `{cluster}_aamut_fitness.csv` with fitness effects of the amino acid mutations for each cluster of clades.
@@ -147,5 +146,4 @@ $$
 
 where $g(\mathbf y)$ maps the codon into the corresponding amino acid, and the sums run over
 the codon sites $i$ and possible mutant nucleotides at these sites $y_i$.
-
 
