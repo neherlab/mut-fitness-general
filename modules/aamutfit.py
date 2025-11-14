@@ -25,9 +25,7 @@ def get_coding(df, gene_overlaps, explode_cols):
     df_coding = (
         df.query("not noncoding")
         .assign(
-            is_overlapping=lambda x: x["codon_site"]
-            .str.split(";")
-            .map(lambda s: len(set(s)) > 1),
+            is_overlapping=False,
             overlap_to_exclude=lambda x: (
                 x["is_overlapping"] & x["gene"].map(exclude_overlap)
             ),
@@ -47,7 +45,7 @@ def get_coding(df, gene_overlaps, explode_cols):
     )
 
     for col in explode_cols:
-        df_coding[col] = df_coding[col].str.split(";")
+        df_coding[col] = df_coding[col].astype(str).str.split(";")
 
     df_coding_exp = df_coding.explode(explode_cols).query("gene != 'ORF1a'")
 

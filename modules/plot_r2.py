@@ -9,7 +9,7 @@ feature_labels = [
     "L=C", "L=G", "L=T",
     "R=C", "R=G", "R=T"
 ]
-res_path = "results_rsv_b"
+res_path = "results_hiv_pol_071125"
 
 def collect_weight_matrix(model, mutation_types, feature_labels):
     weight_matrix = []
@@ -46,6 +46,7 @@ def plot_weight_heatmap(model, feature_labels):
     plt.xlabel("Feature")
     plt.ylabel("Mutation Type")
     plt.tight_layout()
+    plt.savefig(f'/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/{res_path}/exploratory_figures/model_weights.pdf')
     plt.show()
 
 

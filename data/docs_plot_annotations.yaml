@@ -281,7 +281,7 @@ plots:
   #   title: correlation of fitness estimates with Mpro (nsp5) deep mutational scanning (all phenotypes)
 
   # heatmaps of mutational effects
-  NS1: &heatmap_template
+  pol: &heatmap_template
     section: heatmap
     legend: |
       Interactive plot of fitnesses amino acids at each site estimated from the observed versus
@@ -310,38 +310,7 @@ plots:
       accurate estimates but for fewer amino acids. So move the slider to the left to show
       estimates for more amino acids at lower confidence, and move it to the right to show
       estimates for fewer amino acids at higher confidence.
-    title: NS1 amino-acid fitnesses
-  NS2:
-    <<: *heatmap_template
-    title: NS2 amino-acid fitnesses
-  N:
-    <<: *heatmap_template
-    title: N amino-acid fitnesses
-  P:
-    <<: *heatmap_template
-    title: P amino-acid fitnesses
-  M:
-    <<: *heatmap_template
-    title: M amino-acid fitnesses
-  SH:
-    <<: *heatmap_template
-    title: SH amino-acid fitnesses
-  G:
-    <<: *heatmap_template
-    title: G amino-acid fitnesses
-  F:
-    <<: *heatmap_template
-    title: F amino-acid fitnesses
-  M2-1:
-    <<: *heatmap_template
-    title: M2-1 amino-acid fitnesses
-  M2-2:
-    <<: *heatmap_template
-    title: M2-2 amino-acid fitnesses
-  L:
-    <<: *heatmap_template
-    title: L amino-acid fitnesses
-
+    title: Pol amino-acid fitnesses
   # fitness_vs_terminal:
   #   title: fitness effects versus number of descendant sequences
   #   section: terminal

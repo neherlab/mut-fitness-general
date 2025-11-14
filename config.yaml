@@ -9,9 +9,10 @@ clade_cluster:
 cluster_founder:
   all: root
 
-rsv_type: b
+# rsv_type: b
 
-output_dir: results_rsv_b
+output_dir: results_hiv_pol_111125
+input_dir: "/scicore/home/neher/kuznet0001/hiv_analysis/hiv_pipeline/results_051125"
   # Orf1ab to Nsp numbering (amino-acid start in Orf1ab) from
 # https://github.com/theosanderson/Codon2Nucleotide/blob/main/src/App.js
 # orf1ab_to_nsps:
@@ -43,7 +44,7 @@ gene_overlaps:
 fitness_pseudocount: 0.5
 
 # Genes order on the viral genome
-genes: ['NS1', 'NS2', 'N', 'P', 'M', 'SH', 'G', 'F', 'M2-1', 'M2-2', 'L']
+genes: ['pol']
 
 # Define common names of Nexstrain clades
 clade_synonyms:

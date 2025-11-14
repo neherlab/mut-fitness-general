@@ -12,6 +12,7 @@ with open(config["docs_plot_annotations"]) as f:
     docs_plot_annotations = yaml.safe_load(f)
 
 OD = config["output_dir"]
+INPUT_DIR = config["input_dir"]
 
 rule all:
     """Target rule with desired output files."""
@@ -24,8 +25,8 @@ rule all:
 
 rule copy_input_files:
     input:
-        mut_counts_src=lambda wc: f"/scicore/home/neher/kuznet0001/rsv_files/mutation_rates/{config['rsv_type']}/mut_counts_by_clade.csv",
-        clade_founder_src=lambda wc: f"/scicore/home/neher/kuznet0001/rsv_files/mutation_rates/{config['rsv_type']}/clade_founder.csv"
+        mut_counts_src=os.path.join(INPUT_DIR, "mut_counts_by_clade.csv"),
+        clade_founder_src=os.path.join(INPUT_DIR, "clade_founder.csv")
     output:
         mut_counts=os.path.join(OD, "mut_counts_by_clade.csv"),
         clade_founder=os.path.join(OD, "clade_founder.csv")
@@ -200,3 +201,7 @@ rule aggregate_plots_for_docs:
 #         current_mat=config["current_mat"],
 #     script:
 #         "scripts/docs_index.py"
+
+rule club:
+    shell:
+        "rm -rf {OD}"
