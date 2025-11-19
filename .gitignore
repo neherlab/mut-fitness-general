@@ -11,3 +11,4 @@ __pycache__
 .snakemake
 results*/exploratory_figures/
 results*/
+profiles

@@ -44,8 +44,10 @@ rule curated_counts:
         # clade_founder=rules.annotate_counts.output.founder_csv,
     output:
         outfile=os.path.join(OD, "curated", "curated_mut_counts.csv"),
-    notebook:
-        "notebook/curate_counts.py.ipynb"
+    params:
+        overwrite=lambda wc: "--overwrite" if config["overwrite"] else "",
+    shell:
+        "python scripts/curate_counts.py --mut-counts {input.mut_counts} --output {output.outfile} {params.overwrite}"
 
 rule master_table:
     message:
@@ -54,8 +56,8 @@ rule master_table:
         counts=rules.curated_counts.output.outfile,
     output:
         ms=os.path.join(OD, "master_tables", "master_table.csv"),
-    notebook:
-        "notebook/master_tables.py.ipynb"
+    shell:
+        "python scripts/master_tables.py --counts {input.counts} --output {output.ms}"
 
 rule predicted_counts:
     message:
@@ -65,8 +67,8 @@ rule predicted_counts:
         curated_counts_df=rules.curated_counts.output.outfile,
     output:
         pred_count_csv=os.path.join(OD, "pred_mut_counts_by_clade.csv"),
-    notebook:
-        "notebook/predicted_counts_by_clade.py.ipynb"
+    shell:
+        "python scripts/predicted_counts_by_clade.py --counts-df {input.counts_df} --curated-counts-df {input.curated_counts_df} --output {output.pred_count_csv}"
 
 rule counts_cluster:
     message:
@@ -81,8 +83,15 @@ rule counts_cluster:
         counts_df=rules.predicted_counts.output.pred_count_csv,
     output:
         cluster_counts=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_counts.csv"),
-    notebook:
-        "notebook/ntmut_counts_cluster.py.ipynb"
+    run:
+        clades_str = ' '.join(params.clades)
+        shell(
+            "python scripts/ntmut_counts_cluster.py "
+            "--counts-df {input.counts_df} "
+            "--cluster {params.cluster} "
+            "--clades " + clades_str + " "
+            "--output {output.cluster_counts}"
+        )
 
 rule ntmut_fitness:
     message:
@@ -91,23 +100,31 @@ rule ntmut_fitness:
         cluster_counts=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_counts.csv"),
     output:
         ntfit_csv=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_fitness.csv"),
-    notebook:
-        'notebook/ntmut_fitness.py.ipynb'
+    shell:
+        "python scripts/ntmut_fitness.py --cluster-counts {input.cluster_counts} --output {output.ntfit_csv}"
 
 rule aamut_fitness:
     message:
         "Calculate estimates of the fitness effects of each amino acid substitution."
     params:
-        # orf_to_nsps=config['orf1ab_to_nsps'],
-        gene_ov=config['gene_overlaps'],
+        gene_ov_retain=config['gene_overlaps']['retain'],
+        gene_ov_exclude=config['gene_overlaps']['exclude'],
         genes=config['genes'],
         fit_pseudo=config['fitness_pseudocount'],
     input:
         ntfit_csv=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_fitness.csv"),
     output:
         aafit_csv=os.path.join(OD, "aamut_fitness", "{cluster}_aamut_fitness.csv"),
-    notebook:
-        'notebook/aamut_fitness.py.ipynb'
+    shell:
+        """
+        python scripts/aamut_fitness.py \
+            --gene-overlaps-retain "{params.gene_ov_retain}" \
+            --gene-overlaps-exclude "{params.gene_ov_exclude}" \
+            --ntmut-fit {input.ntfit_csv} \
+            --output {output.aafit_csv} \
+            --genes {params.genes} \
+            --fitness-pseudocount {params.fit_pseudo}
+        """
 
 rule concat_aamut:
     message:
@@ -130,21 +147,18 @@ rule concat_aamut:
 rule aamut_plots:
     message:
         "Generating interactive plots of a.a. mutational fitness",
-    params:
-        min_predicted_count = config['min_predicted_count'],
-        clade_synonyms = config['clade_synonyms'],
-        heatmap_minimal_domain = config['aa_fitness_heatmap_minimal_domain'],
-        # orf1ab_to_nsps = config['orf1ab_to_nsps'],
-        clade_cluster = config['clade_cluster'],
-        cluster_founder = config['cluster_founder'],
-        cluster_corr_min_count = config['cluster_corr_min_count'],
     input:
         clade_founder_nts=rules.copy_input_files.output.clade_founder,
         aamut_by_cluster=rules.concat_aamut.output.aafit_concat,
+        config_file="config.yaml",
     output:
         outdir=directory(os.path.join(OD, "aamut_fitness", "plots")),
-    notebook:
-        'notebook/aamut_plots.py.ipynb'
+    shell:
+        "python scripts/aamut_plots.py "
+        "--aamut-by-cluster {input.aamut_by_cluster} "
+        "--clade-founder-nts {input.clade_founder_nts} "
+        "--output-dir {output.outdir} "
+        "--config {input.config_file}"
 
 rule aggregate_plots_for_docs:
     """Aggregate plots to include in GitHub pages docs."""
@@ -202,6 +216,8 @@ rule aggregate_plots_for_docs:
 #     script:
 #         "scripts/docs_index.py"
 
-rule club:
+rule clobber:
+    message:
+        "Remove all output files"
     shell:
         "rm -rf {OD}"

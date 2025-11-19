@@ -14,8 +14,9 @@ dependencies:
   - certifi
   - openssl=3.3.2
   - jupyter=1.1.1
-  - altair=4.2
+  - altair>=5.0,<6.0  # Updated to fix convert_dtype FutureWarning
   - markdown=3.6
   - biopython=1.79
   - nbconvert>=6.5.0    # <-- Add this
   - notebook            # <-- Add this to ensure compatibility with newer nbconvert
+  - setuptools<81       # Pin to avoid pkg_resources deprecation warning from stopit
