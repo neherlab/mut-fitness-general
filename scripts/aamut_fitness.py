@@ -58,7 +58,7 @@ def main():
     )
     
     args = parser.parse_args()
-    
+    print(args.genes)
     # Parse gene overlaps
     if args.gene_overlaps_retain and args.gene_overlaps_exclude:
         gene_overlaps_retain = ast.literal_eval(args.gene_overlaps_retain)
@@ -84,26 +84,21 @@ def main():
     # Get only coding mutations
     print("Extracting coding mutations...")
     ntmut_fit_coding = aamutfit.get_coding(ntmut_fit, gene_overlaps, explode_cols)
-    
     # Aggregate counts for amino acid mutations
     print("Aggregating counts for amino acid mutations...")
     aa_counts = aamutfit.aggregate_counts(ntmut_fit_coding, explode_cols)
-    
     # Adding naive fitness estimates
     print("Computing naive fitness estimates...")
     aamutfit.naive_fitness(aa_counts, fitness_pseudocount=args.fitness_pseudocount)
-    
     # Dataframe with refined fitness estimates
     print("Computing refined fitness estimates...")
     aa_fit = aamutfit.aa_fitness(ntmut_fit_coding, explode_cols)
-    
     # Merge counts and fitness dataframes
     aamut_fitness = aamutfit.merge_aa_df(aa_fit, aa_counts, explode_cols)
-    
     # Order dataframe according to: genes order, site within the gene
     aamut_fitness['gene'] = pd.CategoricalIndex(aamut_fitness['gene'], ordered=True, categories=args.genes)
     aamut_fitness = aamut_fitness.sort_values(['gene', 'aa_site']).reset_index(drop=True)
-    
+
     # Write to file
     os.makedirs(os.path.dirname(args.output) if os.path.dirname(args.output) else '.', exist_ok=True)
     aamut_fitness.to_csv(args.output, index=False)

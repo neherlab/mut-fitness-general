@@ -7,6 +7,7 @@ dependencies:
   - pandas>=2.2,<=2.2.3 
   - scipy=1.14.1
   - matplotlib=3.9.2
+  - seaborn
   - ipykernel=6.29.5
   - python=3.10
   - snakemake=7.32.4
@@ -14,9 +15,9 @@ dependencies:
   - certifi
   - openssl=3.3.2
   - jupyter=1.1.1
-  - altair>=5.0,<6.0  # Updated to fix convert_dtype FutureWarning
+  - altair=4.2
   - markdown=3.6
   - biopython=1.79
-  - nbconvert>=6.5.0    # <-- Add this
-  - notebook            # <-- Add this to ensure compatibility with newer nbconvert
+  - nbconvert>=6.5.0
+  - notebook
   - setuptools<81       # Pin to avoid pkg_resources deprecation warning from stopit

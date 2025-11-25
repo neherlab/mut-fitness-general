@@ -1,22 +1,28 @@
+import os, sys
+myDir = os.path.dirname(os.path.abspath(__file__))
+parentDir = os.path.split(myDir)[0]
+if not (sys.path.__contains__(parentDir)):
+    sys.path.append(parentDir)
+from modules.glm import GeneralLinearModel
+from modules.load import load_synonymous_muts
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from glm import GeneralLinearModel
-from load import load_synonymous_muts
+
 
 # ----------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------
 mut_types = ['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG']
 
-datasets = {
-    "RSV A": "/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/results_rsv_a/curated/curated_mut_counts.csv",
-    "RSV B": "/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/results_rsv_b/curated/curated_mut_counts.csv",
-    "HIV-1 pol": "/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/results_hiv_pol_071125/curated/curated_mut_counts.csv",
+datasets_default = {
+    "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a/curated/curated_mut_counts.csv",
+    "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b/curated/curated_mut_counts.csv",
+    "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_071125/curated/curated_mut_counts.csv",
 }
 
-precomputed_models = {
-    "SARS-CoV-2": "/scicore/home/neher/kuznet0001/sars_coefs_dict.pkl"
+precomputed_default = {
+    "SARS-CoV-2": "/scicore/home/neher/kuznet0001/data/sars_coefs_dict.pkl"
 }
 
 colors = {
@@ -29,6 +35,8 @@ colors = {
 # ----------------------------------------------------------------------
 # LOAD MODELS
 # ----------------------------------------------------------------------
+
+
 def load_models(datasets, precomputed_models):
     """Return dict mapping virus -> mut_type -> coefficients"""
     coefs = {}
@@ -66,7 +74,8 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
         for j, name in enumerate(all_names):
             W = coefs_dict[name][mut_type]
             vals = np.array(W).flatten()
-            vals = np.concatenate(([vals[0]], vals[-6:]))  # intercept + 6 context terms
+            # intercept + 6 context terms
+            vals = np.concatenate(([vals[0]], vals[-6:]))
 
             # track global min/max
             min_bar = min(min_bar, np.min(vals[1:]))
@@ -102,15 +111,62 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
         plt.savefig(savepath)
     plt.show()
 
+# ----------------------------------------------------------------------
+# MAIN + ARGPARSE
+# ----------------------------------------------------------------------
 
-# ----------------------------------------------------------------------
-# MAIN
-# ----------------------------------------------------------------------
-if __name__ == '__main__':
-    coefs_dict = load_models(datasets, precomputed_models)
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Plot mutation context coefficients.")
+
+    parser.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Path to save the PDF (optional)."
+    )
+
+    parser.add_argument(
+        "--datasets",
+        nargs="*",
+        default=list(datasets_default.keys()),
+        help="Which datasets to include (default: all)."
+    )
+
+    parser.add_argument(
+        "--only-precomputed",
+        action="store_true",
+        help="Skip training, only load precomputed models."
+    )
+
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Do not display the plot interactively."
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    selected_datasets = {k: datasets_default[k]
+                         for k in args.datasets if k in datasets_default}
+    selected_precomputed = precomputed_default if args.only_precomputed else precomputed_default.copy()
+
+    if not args.only_precomputed:
+        coefs = load_models(selected_datasets, selected_precomputed)
+    else:
+        coefs = load_models({}, selected_precomputed)
+
     plot_mut_coefs(
-        coefs_dict,
+        coefs,
         colors,
         mut_types,
-        savepath='/scicore/home/neher/kuznet0001/rsv_code/RSV-mut-fitness/results_hiv_pol_071125/exploratory_figures/model_coefs_barplot_all.pdf'
+        savepath=args.out
     )
+
+    if args.no_show:
+        plt.close()

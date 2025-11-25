@@ -11,8 +11,8 @@ cluster_founder:
 
 overwrite: true
 
-output_dir: results_hiv_pol_141125
-input_dir: "/scicore/home/neher/kuznet0001/hiv_analysis/hiv_pipeline/results_051125"
+output_dir: results_rsv_b_251125
+input_dir: "/scicore/home/neher/kuznet0001/mutation-counts-from-phylogeny/results_rsv_b_241125"
 
 # How to handle nucleotide sites that overlap among sites: exclude them from
 # amino-acid fitness estimates or retain those sites in estimates. If retained, estimates
@@ -26,7 +26,7 @@ gene_overlaps:
 fitness_pseudocount: 0.5
 
 # Genes order on the viral genome
-genes: ['pol']
+genes: all
 
 # Define common names of Nexstrain clades
 clade_synonyms:

@@ -547,6 +547,7 @@ def main():
     aamut = aamut.assign(clade=lambda x: x['cluster'].map(lambda c: cluster_founder_map(c, cluster_founder)))
     
     # Retain only mutations from the cluster founder amino acids
+    print(aamut['gene'].unique())
     aamut_cl_fnd = (
         aamut
         .rename(columns={'aa_site':'site', 'clade_founder_aa':'amino acid'})

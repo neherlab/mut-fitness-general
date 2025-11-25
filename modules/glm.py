@@ -119,13 +119,8 @@ class GeneralLinearModel:
 
             # Compute the mean squared error of the fitted model on the training data
             preds = X @ self.W[mut_type]
-            print(f"preds shape: {preds.shape}, log_counts shape: {log_counts.shape}, res shape: {(log_counts - preds).shape}")
-            print(f"prev residuals shape: {(log_counts - (X @ self.W[mut_type]).flatten()).shape}")
             mse = np.mean((log_counts - preds) ** 2)
-            print(f"se: {(log_counts - preds) ** 2}")
             print(f"mse: {mse}")
-            print(f"prev se: {(log_counts - (X @ self.W[mut_type]).flatten()) ** 2}")
-
             print(f"prev mse: {np.mean((log_counts - (X @ self.W[mut_type]).flatten()) ** 2)}")
             mean_sq_errs[mut_type] = mse
 
@@ -220,7 +215,3 @@ class GeneralLinearModel:
             sigma["TT_p"],
             sigma["TT_up"],
         ]
-
-
-if __name__ == "__main__":
-    print("test")

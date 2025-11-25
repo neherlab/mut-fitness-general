@@ -280,37 +280,37 @@ plots:
   #   <<: *dms_nsp5_corr_template
   #   title: correlation of fitness estimates with Mpro (nsp5) deep mutational scanning (all phenotypes)
 
-  # heatmaps of mutational effects
-  pol: &heatmap_template
-    section: heatmap
-    legend: |
-      Interactive plot of fitnesses amino acids at each site estimated from the observed versus
-      predicted counts of the amino acids among natural sequences.
+# heatmaps of mutational effects
+heatmap_template: &heatmap_template
+  section: heatmap
+  legend: |
+    Interactive plot of fitnesses amino acids at each site estimated from the observed versus
+    predicted counts of the amino acids among natural sequences.
 
-      The black area plot at top shows the mean fitness for all non-stop amino acids at each
-      site, with more negative values
-      indicating mutations at a site tend to be deleterious. The plot is zoomable, and you can
-      click and drag with the mouse to highlight specific regions to show in the heat map. You
-      can use the *site fitness statistic* click box at bottom to change whether the black area
-      plot at top shows the mean, maximum, or minimum fitness of amino acids at that site.
-      You can use the *show stop* option at bottom to overlay the effect of stop codon mutations
-      on this plot.
+    The black area plot at top shows the mean fitness for all non-stop amino acids at each
+    site, with more negative values
+    indicating mutations at a site tend to be deleterious. The plot is zoomable, and you can
+    click and drag with the mouse to highlight specific regions to show in the heat map. You
+    can use the *site fitness statistic* click box at bottom to change whether the black area
+    plot at top shows the mean, maximum, or minimum fitness of amino acids at that site.
+    You can use the *show stop* option at bottom to overlay the effect of stop codon mutations
+    on this plot.
 
-      The heat map shows the estimated fitness values for specific amino acids. Red indicates
-      low fitness (deleterious) amino acids, and blue indicates high fitness amino acids.
-      Gray indicates amino acids with insufficient natural evolutionary data to make estimates
-      (typically only single-nucleotide accessible amino acids will be shown). You can
-      mouse over points in the heat map for details, and zoom using the area plot at top.
-      The **x** at each site indicates the wildtype amino acid in the *oldest* clade of a cluster,
-      indicated by the dropdown box below the plot. The button below allows to visualize amino acids
-      mutational effects for a specific cluster of clades.
+    The heat map shows the estimated fitness values for specific amino acids. Red indicates
+    low fitness (deleterious) amino acids, and blue indicates high fitness amino acids.
+    Gray indicates amino acids with insufficient natural evolutionary data to make estimates
+    (typically only single-nucleotide accessible amino acids will be shown). You can
+    mouse over points in the heat map for details, and zoom using the area plot at top.
+    The **x** at each site indicates the wildtype amino acid in the *oldest* clade of a cluster,
+    indicated by the dropdown box below the plot. The button below allows to visualize amino acids
+    mutational effects for a specific cluster of clades.
 
-      The *minimum expected count* slider below the plot indicates how many predicted counts of an
-      an amino acid we require before making a fitness estimate. Larger values yield more
-      accurate estimates but for fewer amino acids. So move the slider to the left to show
-      estimates for more amino acids at lower confidence, and move it to the right to show
-      estimates for fewer amino acids at higher confidence.
-    title: Pol amino-acid fitnesses
+    The *minimum expected count* slider below the plot indicates how many predicted counts of an
+    an amino acid we require before making a fitness estimate. Larger values yield more
+    accurate estimates but for fewer amino acids. So move the slider to the left to show
+    estimates for more amino acids at lower confidence, and move it to the right to show
+    estimates for fewer amino acids at higher confidence.
+  title: "{gene} amino-acid fitnesses"
   # fitness_vs_terminal:
   #   title: fitness effects versus number of descendant sequences
   #   section: terminal

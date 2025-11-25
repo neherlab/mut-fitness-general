@@ -6,13 +6,36 @@ in different subsets of the total sequence availability.
 
 import yaml
 import os
+import pandas as pd
 
 configfile: "config.yaml"
+
+
 with open(config["docs_plot_annotations"]) as f:
     docs_plot_annotations = yaml.safe_load(f)
 
 OD = config["output_dir"]
 INPUT_DIR = config["input_dir"]
+if config["genes"] == "all":
+    GENES = list(
+        pd.read_csv(os.path.join(INPUT_DIR, "clade_founder.csv")).gene.unique()
+    )
+    if "noncoding" in GENES:
+        GENES.remove("noncoding")
+else:
+    GENES = config["genes"]
+print("Genes to analyze:", GENES)
+template = docs_plot_annotations["heatmap_template"]
+
+# Auto-generate plot annotation entries for each gene
+docs_plot_annotations["plots"] = {}
+
+for g in GENES:
+    docs_plot_annotations["plots"][g] = {
+        **template,
+        "title": template["title"].format(gene=g),
+    }
+
 
 rule all:
     """Target rule with desired output files."""
@@ -23,13 +46,14 @@ rule all:
             plot=list(docs_plot_annotations["plots"]),
         ),
 
+
 rule copy_input_files:
     input:
         mut_counts_src=os.path.join(INPUT_DIR, "mut_counts_by_clade.csv"),
-        clade_founder_src=os.path.join(INPUT_DIR, "clade_founder.csv")
+        clade_founder_src=os.path.join(INPUT_DIR, "clade_founder.csv"),
     output:
         mut_counts=os.path.join(OD, "mut_counts_by_clade.csv"),
-        clade_founder=os.path.join(OD, "clade_founder.csv")
+        clade_founder=os.path.join(OD, "clade_founder.csv"),
     run:
         os.makedirs(OD, exist_ok=True)
         shell("cp {input.mut_counts_src} {output.mut_counts}")
@@ -49,6 +73,7 @@ rule curated_counts:
     shell:
         "python scripts/curate_counts.py --mut-counts {input.mut_counts} --output {output.outfile} {params.overwrite}"
 
+
 rule master_table:
     message:
         "Create tables with predicted mutation rates for each mutation in each of its contexts"
@@ -58,6 +83,7 @@ rule master_table:
         ms=os.path.join(OD, "master_tables", "master_table.csv"),
     shell:
         "python scripts/master_tables.py --counts {input.counts} --output {output.ms}"
+
 
 rule predicted_counts:
     message:
@@ -70,6 +96,7 @@ rule predicted_counts:
     shell:
         "python scripts/predicted_counts_by_clade.py --counts-df {input.counts_df} --curated-counts-df {input.curated_counts_df} --output {output.pred_count_csv}"
 
+
 rule counts_cluster:
     message:
         """
@@ -78,13 +105,13 @@ rule counts_cluster:
         """
     params:
         cluster=lambda wc: wc.cluster,
-        clades=lambda wc: config['clade_cluster'][wc.cluster],
+        clades=lambda wc: config["clade_cluster"][wc.cluster],
     input:
         counts_df=rules.predicted_counts.output.pred_count_csv,
     output:
         cluster_counts=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_counts.csv"),
     run:
-        clades_str = ' '.join(params.clades)
+        clades_str = " ".join(params.clades)
         shell(
             "python scripts/ntmut_counts_cluster.py "
             "--counts-df {input.counts_df} "
@@ -92,6 +119,7 @@ rule counts_cluster:
             "--clades " + clades_str + " "
             "--output {output.cluster_counts}"
         )
+
 
 rule ntmut_fitness:
     message:
@@ -103,14 +131,15 @@ rule ntmut_fitness:
     shell:
         "python scripts/ntmut_fitness.py --cluster-counts {input.cluster_counts} --output {output.ntfit_csv}"
 
+
 rule aamut_fitness:
     message:
         "Calculate estimates of the fitness effects of each amino acid substitution."
     params:
-        gene_ov_retain=config['gene_overlaps']['retain'],
-        gene_ov_exclude=config['gene_overlaps']['exclude'],
-        genes=config['genes'],
-        fit_pseudo=config['fitness_pseudocount'],
+        gene_ov_retain=config["gene_overlaps"]["retain"],
+        gene_ov_exclude=config["gene_overlaps"]["exclude"],
+        genes=GENES,
+        fit_pseudo=config["fitness_pseudocount"],
     input:
         ntfit_csv=os.path.join(OD, "ntmut_fitness", "{cluster}_ntmut_fitness.csv"),
     output:
@@ -126,13 +155,14 @@ rule aamut_fitness:
             --fitness-pseudocount {params.fit_pseudo}
         """
 
+
 rule concat_aamut:
     message:
-        "Concatenating {{cluster}}_aamut_fitness.csv files",
+        "Concatenating {{cluster}}_aamut_fitness.csv files"
     input:
         aafit_csv=expand(
             os.path.join(OD, "aamut_fitness", "{cluster}_aamut_fitness.csv"),
-            cluster=config['clade_cluster'].keys()
+            cluster=config["clade_cluster"].keys(),
         ),
     output:
         aafit_concat=os.path.join(OD, "aamut_fitness", "aamut_fitness_by_cluster.csv"),
@@ -144,9 +174,10 @@ rule concat_aamut:
         }} > {output.aafit_concat}
         """
 
+
 rule aamut_plots:
     message:
-        "Generating interactive plots of a.a. mutational fitness",
+        "Generating interactive plots of a.a. mutational fitness"
     input:
         clade_founder_nts=rules.copy_input_files.output.clade_founder,
         aamut_by_cluster=rules.concat_aamut.output.aafit_concat,
@@ -159,6 +190,7 @@ rule aamut_plots:
         "--clade-founder-nts {input.clade_founder_nts} "
         "--output-dir {output.outdir} "
         "--config {input.config_file}"
+
 
 rule aggregate_plots_for_docs:
     """Aggregate plots to include in GitHub pages docs."""
@@ -177,7 +209,8 @@ rule aggregate_plots_for_docs:
         rm -f {params.plotsdir}/*
         cp {input.aa_fitness_plots_dir}/*.html {params.plotsdir}
 #         """
-    
+
+
 # rule format_plot_for_docs:
 #     message:
 #         "Format a specific plot for the GitHub pages docs"
@@ -215,6 +248,7 @@ rule aggregate_plots_for_docs:
 #         current_mat=config["current_mat"],
 #     script:
 #         "scripts/docs_index.py"
+
 
 rule clobber:
     message:
