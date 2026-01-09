@@ -8,6 +8,8 @@ from modules.load import load_synonymous_muts
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import argparse
+import os
 
 
 # ----------------------------------------------------------------------
@@ -16,9 +18,9 @@ import pickle
 mut_types = ['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG']
 
 datasets_default = {
-    "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a/curated/curated_mut_counts.csv",
-    "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b/curated/curated_mut_counts.csv",
-    "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_071125/curated/curated_mut_counts.csv",
+    "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a_241125/curated/curated_mut_counts.csv",
+    "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b_251125/curated/curated_mut_counts.csv",
+    "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_141125/curated/curated_mut_counts.csv",
 }
 
 precomputed_default = {
@@ -108,6 +110,7 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
     plt.tight_layout()
 
     if savepath:
+        os.makedirs(os.path.dirname(savepath), exist_ok=True)    
         plt.savefig(savepath)
     plt.show()
 
