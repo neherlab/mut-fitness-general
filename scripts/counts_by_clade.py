@@ -28,8 +28,9 @@ def main():
     )
     parser.add_argument(
         "--rna-struct",
-        required=True,
-        help="Input file with RNA structure predictions"
+        required=False,
+        default=None,
+        help="Input file with RNA structure predictions (optional)"
     )
     parser.add_argument(
         "--founder-output",
@@ -92,7 +93,10 @@ def main():
     # Read in and annotate counts data
     print(f"Reading counts from {args.counts}")
     counts_df = pd.read_csv(args.counts)
-    counts_df = counts_df.query("subset == 'all'")
+    
+    # Filter by subset if column exists
+    if 'subset' in counts_df.columns:
+        counts_df = counts_df.query("subset == 'all'")
     
     # Add metadata
     counts_df[['wt_nt', 'mut_nt']] = counts_df['nt_mutation'].str.extract(r'(\w)\d+(\w)')
@@ -133,36 +137,50 @@ def main():
     counts_df['nt_site_before_boundary'] = counts_df.apply(lambda x: light_switch(x.mut_type, x.nt_site), axis=1)
     
     # Add column indicating whether RNA sites are predicted to be paired
-    with open(args.rna_struct) as f:
-        lines = [line.rstrip().split() for line in f]
-    paired = np.array([[int(x[0]),int(x[4])] for x in lines[1:]])
-    paired_dict = dict(zip(paired[:,0], paired[:,1]))
-    
-    def assign_ss_pred(site):
-        if site not in paired_dict:
-            return 'nd'
-        elif paired_dict[site] == 0:
-            return 'unpaired'
-        else:
-            return 'paired'
-    
-    counts_df['ss_prediction'] = counts_df['nt_site'].apply(lambda x: assign_ss_pred(x))
-    counts_df['unpaired'] = counts_df['ss_prediction'].apply(lambda x: 1 if x == 'unpaired' else 0)
+    if args.rna_struct:
+        with open(args.rna_struct) as f:
+            lines = [line.rstrip().split() for line in f]
+        paired = np.array([[int(x[0]),int(x[4])] for x in lines[1:]])
+        paired_dict = dict(zip(paired[:,0], paired[:,1]))
+        
+        def assign_ss_pred(site):
+            if site not in paired_dict:
+                return 'nd'
+            elif paired_dict[site] == 0:
+                return 'unpaired'
+            else:
+                return 'paired'
+        
+        counts_df['ss_prediction'] = counts_df['nt_site'].apply(lambda x: assign_ss_pred(x))
+        counts_df['unpaired'] = counts_df['ss_prediction'].apply(lambda x: 1 if x == 'unpaired' else 0)
+    else:
+        # If no RNA structure file provided, mark all as unpaired=0 (paired)
+        counts_df['ss_prediction'] = 'nd'
+        counts_df['unpaired'] = 0
     
     # Add columns giving a site's motif relative to the clade founder and the reference sequence
-    counts_df = counts_df.merge(
-        founder_df[['nt_site', 'clade', 'motif', 'ref_motif']],
-        on = ['nt_site', 'clade'], how='left',
-    )
+    if 'motif' not in counts_df.columns or 'ref_motif' not in counts_df.columns:
+        counts_df = counts_df.merge(
+            founder_df[['nt_site', 'clade', 'motif', 'ref_motif']],
+            on = ['nt_site', 'clade'], how='left',
+        )
     
-    # Assign motif to genome edges
-    nt_1 = counts_df.loc[counts_df.nt_site ==1, 'wt_nt'].unique()
-    for n in nt_1:
-        counts_df.loc[(counts_df.nt_site ==1) & (counts_df.wt_nt == n), 'motif'] = "A" + n + "T"
-    counts_df.loc[counts_df.nt_site == 29903, 'motif'] = 'AAA'
+    # Assign motif to genome edges using actual sequence context from codons
+    max_site = counts_df['nt_site'].max()
+    
+    # First site: use "A" + first two nucleotides of codon
+    counts_df.loc[counts_df.nt_site == 1, ["motif", "ref_motif"]] = counts_df.loc[
+        counts_df.nt_site == 1, "clade_founder_codon"
+    ].apply(lambda x: "A" + x[:2])
+    
+    # Last site: use last two nucleotides of codon + "A"
+    counts_df.loc[counts_df.nt_site == max_site, ["motif", "ref_motif"]] = counts_df.loc[
+        counts_df.nt_site == max_site, "clade_founder_codon"
+    ].apply(lambda x: x[1:] + "A")
     
     # Save to file
-    counts_df.drop(columns=['subset'], inplace=True)
+    if 'subset' in counts_df.columns:
+        counts_df.drop(columns=['subset'], inplace=True)
     if args.overwrite or not os.path.isfile(args.counts_output):
         os.makedirs(os.path.dirname(args.counts_output) if os.path.dirname(args.counts_output) else '.', exist_ok=True)
         counts_df.to_csv(args.counts_output, index=False)

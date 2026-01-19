@@ -53,7 +53,7 @@ class GeneralLinearModel:
     def create_data_matrix(self, mut_counts_df, mut_type):
         factor_cols = {}
 
-        # Get global context
+        # Get global context - REMOVED for mut-fitness-general
         # if mut_type in ["AT", "CG", "GC"]:
         #     factor_cols["global_context"] = [
         #         (mut_counts_df["nt_site"] > 21562).values.astype(int)
@@ -63,10 +63,13 @@ class GeneralLinearModel:
         #         (mut_counts_df["nt_site"] > 13467).values.astype(int)
         #     ]
         # else:
-        # factor_cols["global_context"] = None
+        #     factor_cols["global_context"] = None
 
-        # Get RNA structure
-        # factor_cols["rna_structure"] = [mut_counts_df["unpaired"].values]
+        # Get RNA structure (if available)
+        if "unpaired" in mut_counts_df.columns:
+            factor_cols["rna_structure"] = [mut_counts_df["unpaired"].values]
+        else:
+            factor_cols["rna_structure"] = None
 
         # Get left and right context
         left_context = mut_counts_df["motif"].apply(lambda x: x[0]).values

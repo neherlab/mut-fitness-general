@@ -10,6 +10,7 @@ import argparse
 import numpy as np
 import os
 import sys
+import yaml
 
 # Add module folder to system paths
 module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -34,15 +35,26 @@ def main():
         required=True,
         help="Output CSV file for master table"
     )
+    parser.add_argument(
+        "--config",
+        default="config.yaml",
+        help="Path to config.yaml file (default: config.yaml)"
+    )
     
     args = parser.parse_args()
+    
+    # Load config
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+    use_rna_structure = config.get('use_rna_structure', True)
     
     # Load training dataframes
     print(f"Loading curated counts from {args.counts}")
     counts = load.load_synonymous_muts(args.counts)
     
     # Initialize rates objects
-    rate = rates.Rates()
+    rate = rates.Rates(use_rna_structure=use_rna_structure)
+    print(f"RNA structure: {'enabled' if use_rna_structure else 'disabled'}")
     
     # Populate rates and add predicted counts
     print("Populating rates...")
@@ -66,9 +78,15 @@ def main():
     # Adding lightswitch boundaries: a placeholder for global context
     rate.rates['nt_site_boundary'] = np.zeros(rate.rates.shape[0], int)
     
-    # Save master tables
-    cols = ['mut_type', 'motif', 'unpaired', 'nt_site_boundary', 'nt_site_before_boundary', 'rate', 'predicted_count', 'residual']
+    # Add nt_site_before_boundary column if it doesn't exist (for backwards compatibility)
+    if 'nt_site_before_boundary' not in rate.rates.columns:
+        rate.rates['nt_site_before_boundary'] = False
     
+    # Save master tables - columns depend on whether RNA structure is used
+    cols = ['mut_type', 'motif'] + (['unpaired'] if use_rna_structure else []) \
+        + ['nt_site_boundary', 'nt_site_before_boundary', 'rate', 'predicted_count', 'residual']
+
+        
     rate.rates.drop(columns=['condition'], inplace=True)
     
     os.makedirs(os.path.dirname(args.output) if os.path.dirname(args.output) else '.', exist_ok=True)

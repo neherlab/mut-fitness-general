@@ -10,12 +10,27 @@ letters = ["A", "C", "G", "T"]
 mut_types = [b1+b2 for b1 in letters for b2 in letters if b1 != b2]
 
 
+def _get_condition_columns(use_rna_structure):
+    """Get list of columns that define a condition."""
+    return ["mut_type", "motif"] + (["unpaired"] if use_rna_structure else [])
+
+
+def _build_condition_list(df, use_rna_structure):
+    """Build array of condition tuples from dataframe."""
+    return np.column_stack([df[c] for c in _get_condition_columns(use_rna_structure)])
+
+
+def _map_condition_to_values(df, condition_dict, use_rna_structure):
+    """Map conditions in dataframe to values from dictionary."""
+    cond_list = _build_condition_list(df, use_rna_structure)
+    return np.array(list(map(lambda x: condition_dict[tuple(x)], cond_list)))
+
+
 class Rates:
     # Initialize all rates to zeros
-    def __init__(self,):
-        unpaired = [0]
-        # light_switch = [l_min, l_max]
-        light_switch = [False]
+    def __init__(self, use_rna_structure=True):
+        self.use_rna_structure = use_rna_structure
+        unpaired = [0, 1] if use_rna_structure else [0]
 
         unique_muts = []
 
@@ -23,11 +38,7 @@ class Rates:
             for x_l in letters:
                 for x_r in letters:
                     for p in unpaired:
-                        if m in ["CT", "AT", "CG", "GC"]:
-                            for l in light_switch:
-                                unique_muts.append([m, x_l + m[0] + x_r, p, l, 0.0])
-                        else:
-                            unique_muts.append([m, x_l + m[0] + x_r, p, False, 0.0])
+                        unique_muts.append([m, x_l + m[0] + x_r, p, 0.0])
 
         self.rates = pd.DataFrame(
             unique_muts,
@@ -35,7 +46,6 @@ class Rates:
                 "mut_type",
                 "motif",
                 "unpaired",
-                "nt_site_before_boundary",
                 "rate",
             ],
         )
@@ -43,16 +53,12 @@ class Rates:
     # Populate rates according to inferred GLM
     def populate_rates(self, count_df):
         # Infer GLM
-        general_linear_model = glm.GeneralLinearModel(
-            # ["global_context", "rna_structure", "local_context"]
-            ["local_context"]
-        )
+        factors = ["local_context"]
+        if self.use_rna_structure:
+            factors.insert(0, "rna_structure")
+        general_linear_model = glm.GeneralLinearModel(factors)
         general_linear_model.train(count_df)
-        s_max = count_df.nt_site.max()
         rates = self.rates
-        rates["nt_site"] = rates["nt_site_before_boundary"].apply(
-            lambda x: s_max
-        )
 
         # Populate rates according to GLM
         for m in mut_types:
@@ -67,7 +73,6 @@ class Rates:
             )
 
         rates["predicted_count"] = rates["rate"]
-        rates.drop(columns=["nt_site"], inplace=True)
 
         # Rescale counts by total number of mutations and number of synonymous sites
         tot_mut = count_df.actual_count.sum()
@@ -76,8 +81,7 @@ class Rates:
         rates.rate *= n_ss / tot_mut
 
         # Add column `condition` with tuple summary of mutation conditions
-        # cond_cols = ["mut_type", "motif", "unpaired", "nt_site_before_boundary"]
-        cond_cols = ["mut_type", "motif"]
+        cond_cols = _get_condition_columns(self.use_rna_structure)
         rates["condition"] = rates[cond_cols].apply(tuple, axis=1)
 
     def predicted_counts(self, count_df_syn):
@@ -94,37 +98,18 @@ class Rates:
         # Look-up dictionary condition -> predicted counts
         count_dict = self.rates.set_index("condition")["predicted_count"].to_dict()
 
-        # List of row-wise conditions
-        # cond_list = np.column_stack(
-        #     [df["mut_type"], df["motif"], df["unpaired"], df["nt_site_before_boundary"]]
-        # )
-        cond_list = np.column_stack([df["mut_type"], df["motif"]])
-
-        # Vector of predicted counts
-        pred_count = np.array(list(map(lambda x: count_dict[tuple(x)], cond_list)))
-
-        return pred_count
+        # Map conditions to predicted counts
+        return _map_condition_to_values(df, count_dict, self.use_rna_structure)
 
     def genome_composition(self, count_df_syn):
-        gen_comp = np.array(
-            self.rates.apply(
-                # lambda x: sum(
-                #     (x.mut_type == count_df_syn.mut_type)
-                #     & (x.motif == count_df_syn.motif)
-                #     & (x.unpaired == count_df_syn.unpaired)
-                #     & (
-                #         x.nt_site_before_boundary
-                #         == count_df_syn.nt_site_before_boundary
-                #     )
-                # ),
-                lambda x: sum(
-                    (x.mut_type == count_df_syn.mut_type)
-                    & (x.motif == count_df_syn.motif)
-                ),
-                axis=1,
-            )
-        )
-
+        def count_condition(row):
+            # Build condition based on mut_type, motif, and optionally unpaired
+            cond = (row.mut_type == count_df_syn.mut_type) & (row.motif == count_df_syn.motif)
+            if self.use_rna_structure:
+                cond = cond & (row.unpaired == count_df_syn.unpaired)
+            return sum(cond)
+        
+        gen_comp = np.array(self.rates.apply(count_condition, axis=1))
         return gen_comp
 
     def evol_time(self, count_df_syn):
@@ -141,11 +126,11 @@ class Rates:
 
         idx = self.rates[self.rates.cond_count != 0].index
 
+        # Group by the same columns used in the rates table
+        groupby_cols = _get_condition_columns(self.use_rna_structure)
+        
         emp_counts = (
-            count_df.groupby(
-                # ["mut_type", "motif", "unpaired", "nt_site_before_boundary"]
-                ["mut_type", "motif"]
-            )
+            count_df.groupby(groupby_cols)
             .apply(lambda x: x.actual_count.to_numpy())
             .to_list()
         )
@@ -176,20 +161,12 @@ class Rates:
         # Look-up dictionary condition -> residuals
         res_dict = self.rates.set_index("condition")["residual"].to_dict()
 
-        # List of row-wise conditions
-        cond_list = np.column_stack(
-            # [df["mut_type"], df["motif"], df["unpaired"], df["nt_site_before_boundary"]]
-            [df["mut_type"], df["motif"]]
-        )
-
-        # Vector of residuals counts
-        res = np.array(list(map(lambda x: res_dict[tuple(x)], cond_list)))
-
-        return res
+        # Map conditions to residuals
+        return _map_condition_to_values(df, res_dict, self.use_rna_structure)
 
 
-def add_predicted_count(train_df, count_df, clades):
-    rate = Rates()
+def add_predicted_count(train_df, count_df, clades, use_rna_structure=True):
+    rate = Rates(use_rna_structure=use_rna_structure)
 
     sites = train_df.nt_site.unique()
 
@@ -221,7 +198,7 @@ def add_predicted_count(train_df, count_df, clades):
 
 
 # Add predicted counts to `count_df` for all clades
-def add_predicted_count_all_clades(train, count_df):
+def add_predicted_count_all_clades(train, count_df, use_rna_structure=True):
     clades = count_df.clade.unique()
 
-    add_predicted_count(train, count_df, clades)
+    add_predicted_count(train, count_df, clades, use_rna_structure=use_rna_structure)

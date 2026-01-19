@@ -11,8 +11,8 @@ cluster_founder:
 
 overwrite: true
 
-output_dir: results_rsv_b_251125
-input_dir: "/scicore/home/neher/kuznet0001/mutation-counts-from-phylogeny/results_rsv_b_241125"
+output_dir: results_test_hiv_pol_with_rna
+input_dir: "/home/sasha/Downloads/tmp"
 
 # How to handle nucleotide sites that overlap among sites: exclude them from
 # amino-acid fitness estimates or retain those sites in estimates. If retained, estimates
@@ -20,10 +20,16 @@ input_dir: "/scicore/home/neher/kuznet0001/mutation-counts-from-phylogeny/result
 gene_overlaps:
   exclude: []
   retain: []
-    # - [M2-1, M2-2] # add later
+    # - [M2-1, M2-2] # add later for RSV
 
 # Pseudocount for calculating amino-acid fitnesses
 fitness_pseudocount: 0.5
+
+# Include RNA secondary structure in mutation rate model (requires 'unpaired' column in data)
+use_rna_structure: true
+
+# Minimum number of sites per motif for inclusion in exploratory plots
+plot_min_sites: 5
 
 # Genes order on the viral genome
 genes: all
@@ -31,44 +37,6 @@ genes: all
 # Define common names of Nexstrain clades
 clade_synonyms:
     root: root
-#   19A: B
-#   20A: B.1
-#   20B: B.1.1
-#   20C: B.1.367
-#   20E: B.1.177
-#   20F: D.2
-#   20G: B.1.2
-#   20I: Alpha
-#   20H: Beta
-#   20J: Gamma
-#   21C: Epsilon
-#   21F: Iota
-#   21I: Delta
-#   21J: Delta
-#   21K: Omicron BA.1
-#   21L: Omicron BA.2
-#   22A: Omicron BA.4
-#   22B: Omicron BA.5
-#   22C: Omicron BA.2.12.1
-#   22D: Omicron BA.2.75
-#   22E: Omicron BQ.1
-#   22F: XBB
-#   23A: XBB.1.5
-#   23B: BB.1.16
-#   23C: CH.1.1
-#   23D: XBB.1.9
-#   23E: XBB.2.3
-#   23F: EG.5.1
-#   23G: XBB.1.5.70
-#   23H: HK.3
-#   23I: BA.2.86
-#   24A: JN.1
-#   24B: JN.1.11.1
-#   24C: KP.3
-#   24D: XDV.1
-#   24E: KP.3.1.1
-#   24F: XEC
-#   24G: KP.2.3
 
 # minimal domain for amino-acid fitness heatmap
 aa_fitness_heatmap_minimal_domain: [-6, 2] 

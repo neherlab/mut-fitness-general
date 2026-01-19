@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 import sys
 import os
+import yaml
 myDir = os.path.dirname(os.path.abspath(__file__))
 parentDir = os.path.split(myDir)[0]
 if not (sys.path.__contains__(parentDir)):
@@ -19,6 +20,8 @@ feature_labels = [
     "R=C", "R=G", "R=T"
 ]
 
+feature_labels_with_rna = feature_labels + ["unpaired"]
+
 
 # ------------------------------------------------------------
 # ARGPARSE
@@ -32,6 +35,12 @@ def parse_args():
         "--path",
         required=True,
         help="Path to the result folder containing `curated/curated_mut_counts.csv`."
+    )
+    
+    parser.add_argument(
+        "--config",
+        default="config.yaml",
+        help="Path to config.yaml file (default: config.yaml)"
     )
 
     return parser.parse_args()
@@ -129,6 +138,11 @@ def plot_sequential_r_squared(mean_sq_err_dic, outdir):
 # ------------------------------------------------------------
 if __name__ == "__main__":
     args = parse_args()
+    
+    # Load config
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+    use_rna_structure = config.get('use_rna_structure', True)
 
     res_path = args.path.rstrip("/")
     curated_csv = os.path.join(res_path, "curated", "curated_mut_counts.csv")
@@ -136,13 +150,29 @@ if __name__ == "__main__":
     os.makedirs(figs_out, exist_ok=True)
 
     df = load_synonymous_muts(curated_csv)
-
-    factors = ['local_context']
-    names = ['base', 'local context']
+    
+    # Check if RNA structure data is available and has variation
+    has_rna_data = False
+    if 'unpaired' in df.columns and use_rna_structure:
+        # Check if unpaired column has meaningful variation (not all same value)
+        if df['unpaired'].nunique() > 1:
+            has_rna_data = True
+    
+    if has_rna_data:
+        print("RNA structure data detected and enabled")
+        factors = ['local_context', 'rna_structure']
+        names = ['base', 'local context', 'RNA structure']
+        labels = feature_labels_with_rna
+    else:
+        print("RNA structure not available or disabled")
+        factors = ['local_context']
+        names = ['base', 'local context']
+        labels = feature_labels
 
     mean_squared_errs = {}
 
-    for i in range(2):
+    num_models = len(factors) + 1  # +1 for base model
+    for i in range(num_models):
         current_factors = factors[:i]
         print(f"--- Model {i} ---")
         print(f"Included factors: {current_factors}")
@@ -158,4 +188,4 @@ if __name__ == "__main__":
         mean_squared_errs[names[i]] = mean_sq_err
 
     plot_sequential_r_squared(mean_squared_errs, figs_out)
-    plot_weight_heatmap(model, feature_labels, figs_out)
+    plot_weight_heatmap(model, labels, figs_out)
