@@ -18,6 +18,17 @@ import os
 mut_types = ['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG']
 
 datasets_default = {
+    # Dengue E gene
+    "DENV1 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv1_E/curated/curated_mut_counts.csv",
+    "DENV2 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv2_E/curated/curated_mut_counts.csv",
+    "DENV3 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv3_E/curated/curated_mut_counts.csv",
+    "DENV4 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv4_E/curated/curated_mut_counts.csv",
+    # Dengue genome
+    "DENV1 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv1_genome/curated/curated_mut_counts.csv",
+    "DENV2 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv2_genome/curated/curated_mut_counts.csv",
+    "DENV3 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv3_genome/curated/curated_mut_counts.csv",
+    "DENV4 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv4_genome/curated/curated_mut_counts.csv",
+    # Other viruses
     "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a_241125/curated/curated_mut_counts.csv",
     "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b_251125/curated/curated_mut_counts.csv",
     "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_141125/curated/curated_mut_counts.csv",
@@ -28,10 +39,21 @@ precomputed_default = {
 }
 
 colors = {
-    "RSV A": "blue",
-    "RSV B": "orange",
-    "HIV-1 pol": "green",
-    "SARS-CoV-2": "gray"
+    # Dengue E gene
+    "DENV1 E": "#E74C3C",  # red
+    "DENV2 E": "#3498DB",  # blue
+    "DENV3 E": "#2ECC71",  # green
+    "DENV4 E": "#F39C12",  # orange
+    # Dengue genome
+    "DENV1 genome": "#C0392B",  # dark red
+    "DENV2 genome": "#2980B9",  # dark blue
+    "DENV3 genome": "#27AE60",  # dark green
+    "DENV4 genome": "#D68910",  # dark orange
+    # Other viruses
+    "RSV A": "#9B59B6",     # purple
+    "RSV B": "#E67E22",     # orange
+    "HIV-1 pol": "#1ABC9C", # teal
+    "SARS-CoV-2": "#7F8C8D" # gray
 }
 
 # ----------------------------------------------------------------------
