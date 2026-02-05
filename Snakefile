@@ -16,15 +16,18 @@ with open(config["docs_plot_annotations"]) as f:
 
 OD = config["output_dir"]
 INPUT_DIR = config["input_dir"]
+CLADE_FOUNDER_PATH = os.path.join(INPUT_DIR, "clade_founder.csv")
+
 if config["genes"] == "all":
     GENES = list(
-        pd.read_csv(os.path.join(INPUT_DIR, "clade_founder.csv")).gene.unique()
+        pd.read_csv(CLADE_FOUNDER_PATH).gene.unique()
     )
     if "noncoding" in GENES:
         GENES.remove("noncoding")
 else:
     GENES = config["genes"]
 print("Genes to analyze:", GENES)
+
 template = docs_plot_annotations["heatmap_template"]
 
 # Auto-generate plot annotation entries for each gene
@@ -45,12 +48,21 @@ rule all:
             os.path.join(OD, "plots_for_docs", "{plot}.html"),
             plot=list(docs_plot_annotations["plots"]),
         ),
+        os.path.join(OD, "exploratory_figures", "plot_summary.txt"),
 
 
 rule copy_input_files:
     input:
-        mut_counts_src=os.path.join(INPUT_DIR, "mut_counts_by_clade.csv"),
-        clade_founder_src=os.path.join(INPUT_DIR, "clade_founder.csv"),
+        mut_counts_src=lambda wc: next(
+            (os.path.join(INPUT_DIR, f) for f in sorted(os.listdir(INPUT_DIR), reverse=True)
+             if "mut_counts_by_clade" in f and f.endswith(".csv")),
+            os.path.join(INPUT_DIR, "mut_counts_by_clade.csv")
+        ),
+        clade_founder_src=lambda wc: next(
+            (os.path.join(INPUT_DIR, f) for f in os.listdir(INPUT_DIR) 
+             if "clade_founder" in f and f.endswith(".csv")),
+            os.path.join(INPUT_DIR, "clade_founder.csv")
+        ),
     output:
         mut_counts=os.path.join(OD, "mut_counts_by_clade.csv"),
         clade_founder=os.path.join(OD, "clade_founder.csv"),
@@ -211,43 +223,142 @@ rule aggregate_plots_for_docs:
 #         """
 
 
-# rule format_plot_for_docs:
-#     message:
-#         "Format a specific plot for the GitHub pages docs"
-#     input:
-#         plot=os.path.join(rules.aggregate_plots_for_docs.params.plotsdir, "{plot}.html"),
-#         script="scripts/format_altair_html.py",
-#     output:
-#         plot="docs/{plot}.html",
-#         markdown=temp("results/plots_for_docs/{plot}.md"),
-#     params:
-#         annotations=lambda wc: docs_plot_annotations["plots"][wc.plot],
-#         url=config["docs_url"],
-#         legend_suffix=docs_plot_annotations["legend_suffix"],
-#     shell:
-#         """
-#         echo "## {params.annotations[title]}\n" > {output.markdown}
-#         echo "{params.annotations[legend]}\n\n" >> {output.markdown}
-#         echo "{params.legend_suffix}" >> {output.markdown}
-#         python {input.script} \
-#             --chart {input.plot} \
-#             --markdown {output.markdown} \
-#             --site {params.url} \
-#             --title "{params.annotations[title]}" \
-#             --description "{params.annotations[title]}" \
-#             --output {output.plot}
-#         """
+rule plot_local_context:
+    message:
+        "Generate local context effects plots"
+    input:
+        counts=rules.curated_counts.output.outfile,
+    output:
+        logfile=os.path.join(OD, "exploratory_figures", "local_context_scatterplots", "plot_local_context.log"),
+    params:
+        outdir=os.path.join(OD, "exploratory_figures", "local_context_scatterplots"),
+        min_sites=config.get("plot_min_sites", 5),
+    shell:
+        """
+        mkdir -p {params.outdir}
+        python scripts/plot_local_context.py \
+            --counts {input.counts} \
+            --output-dir {params.outdir} \
+            --min-sites {params.min_sites} \
+            > {output.logfile} 2>&1
+        """
 
-# rule docs_index:
-#     message:
-#         "Write index for GitHub Pages doc"
-#     output:
-#         html="docs/index.html",
-#     params:
-#         plot_annotations=docs_plot_annotations,
-#         current_mat=config["current_mat"],
-#     script:
-#         "scripts/docs_index.py"
+
+rule plot_motif_correlations:
+    message:
+        "Generate motif correlation plots"
+    input:
+        counts=rules.curated_counts.output.outfile,
+    output:
+        logfile=os.path.join(OD, "exploratory_figures", "motif_correlations", "plot_motif_correlations.log"),
+    params:
+        outdir=os.path.join(OD, "exploratory_figures", "motif_correlations"),
+        min_sites=config.get("plot_min_sites", 5),
+    shell:
+        """
+        mkdir -p {params.outdir}
+        python scripts/plot_motif_correlations.py \
+            --counts {input.counts} \
+            --output-dir {params.outdir} \
+            --min-sites {params.min_sites} \
+            > {output.logfile} 2>&1
+        """
+
+
+rule plot_genome_distribution:
+    message:
+        "Generate genome distribution plots"
+    input:
+        counts=rules.curated_counts.output.outfile,
+    output:
+        logfile=os.path.join(OD, "exploratory_figures", "genome_distribution", "plot_genome_distribution.log"),
+    params:
+        outdir=os.path.join(OD, "exploratory_figures", "genome_distribution"),
+    shell:
+        """
+        mkdir -p {params.outdir}
+        python scripts/plot_genome_distribution.py \
+            --counts {input.counts} \
+            --output-dir {params.outdir} \
+            > {output.logfile} 2>&1
+        """
+
+
+rule plot_mut_distributions:
+    message:
+        "Generate mutation distribution plots"
+    input:
+        counts=rules.curated_counts.output.outfile,
+    output:
+        logfile=os.path.join(OD, "exploratory_figures", "mut_distributions", "plot_mut_distributions.log"),
+    params:
+        outdir=os.path.join(OD, "exploratory_figures", "mut_distributions"),
+    shell:
+        """
+        mkdir -p {params.outdir}
+        python scripts/plot_mut_distributions.py \
+            --counts {input.counts} \
+            --output-dir {params.outdir} \
+            > {output.logfile} 2>&1
+        """
+
+
+rule plot_r2:
+    message:
+        "Generate R2 sequential model plots"
+    input:
+        counts=rules.curated_counts.output.outfile,
+    output:
+        r2_pdf=os.path.join(OD, "exploratory_figures", "R2_sequentially.pdf"),
+        weights_pdf=os.path.join(OD, "exploratory_figures", "model_weights.pdf"),
+    params:
+        outdir=os.path.join(OD, "exploratory_figures"),
+    shell:
+        """
+        python scripts/plot_r2.py \
+            --path {OD} \
+            --config config.yaml
+        """
+
+
+rule summarize_plots:
+    message:
+        "Summarize exploratory plots"
+    input:
+        local_context_log=rules.plot_local_context.output.logfile,
+        motif_corr_log=rules.plot_motif_correlations.output.logfile,
+        genome_dist_log=rules.plot_genome_distribution.output.logfile,
+        mut_dist_log=rules.plot_mut_distributions.output.logfile,
+        r2_pdf=rules.plot_r2.output.r2_pdf,
+    output:
+        summary=os.path.join(OD, "exploratory_figures", "plot_summary.txt"),
+    params:
+        outdir=os.path.join(OD, "exploratory_figures"),
+    shell:
+        """
+        echo "Exploratory Plots Summary" > {output.summary}
+        echo "=========================" >> {output.summary}
+        echo "" >> {output.summary}
+        echo "Local context plots:" >> {output.summary}
+        grep -E "(Saved|Done)" {input.local_context_log} >> {output.summary} || true
+        echo "" >> {output.summary}
+        echo "Motif correlation plots:" >> {output.summary}
+        grep -E "(Saved|Done)" {input.motif_corr_log} >> {output.summary} || true
+        echo "" >> {output.summary}
+        echo "Genome distribution plots:" >> {output.summary}
+        grep -E "(Saved|Done)" {input.genome_dist_log} >> {output.summary} || true
+        echo "" >> {output.summary}
+        echo "Mutation distribution plots:" >> {output.summary}
+        grep -E "(Saved|Done)" {input.mut_dist_log} >> {output.summary} || true
+        echo "" >> {output.summary}
+        echo "R2 plots:" >> {output.summary}
+        if [ -f {input.r2_pdf} ]; then echo "Generated R2_sequentially.pdf and model_weights.pdf" >> {output.summary}; fi
+        echo "" >> {output.summary}
+        find {params.outdir} -name "*.png" 2>/dev/null | wc -l | xargs echo "Total plots generated:" >> {output.summary}
+        cat {output.summary}
+        """
+
+
 
 
 rule clobber:
