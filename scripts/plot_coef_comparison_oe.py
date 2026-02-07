@@ -53,6 +53,7 @@ colors = {
     "RSV A": "#9B59B6",     # purple
     "RSV B": "#E67E22",     # orange
     "HIV-1 pol": "#1ABC9C", # teal
+    "HIV-1 pol local": "#1ABC9C", # teal (same as HIV-1 pol)
     "SARS-CoV-2": "#7F8C8D" # gray
 }
 
@@ -218,15 +219,11 @@ if __name__ == "__main__":
     selected_datasets = {k: datasets_default[k]
                          for k in args.datasets if k in datasets_default}
     
-    # Only include precomputed models if not using --only-precomputed flag
-    # and avoid loading missing files
-    if args.only_precomputed:
-        selected_precomputed = {}
-        for k, v in precomputed_default.items():
-            if os.path.exists(v):
-                selected_precomputed[k] = v
-    else:
-        selected_precomputed = {}
+    # Filter precomputed models: only include those that exist
+    selected_precomputed = {}
+    for k, v in precomputed_default.items():
+        if k in args.datasets and os.path.exists(v):
+            selected_precomputed[k] = v
 
     if not args.only_precomputed:
         coefs = load_models(selected_datasets, selected_precomputed)
