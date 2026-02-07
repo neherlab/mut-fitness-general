@@ -98,8 +98,9 @@ def compute_oe_intercepts(datasets):
         model = GeneralLinearModel(included_factors=['local_context'])
         model.train(df_train=df)
         
-        # Extract beta_0 (intercept) for each mutation type
-        observed = {mut_type: model.W[mut_type][0] for mut_type in mut_types}
+        # Extract beta_0 (intercept) for each mutation type - ensure scalar
+        observed = {mut_type: float(np.array(model.W[mut_type]).flatten()[0]) 
+                    for mut_type in mut_types}
         
         # Calculate expected: sum of actual counts / 12, then log
         # observed values are log(counts), so counts = exp(observed)
@@ -108,7 +109,7 @@ def compute_oe_intercepts(datasets):
         expected_log = np.log(expected_count)
         
         # O/E in log space = O - E
-        oe_dict[name] = {mut_type: observed[mut_type] - expected_log 
+        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log) 
                          for mut_type in mut_types}
     
     return oe_dict
@@ -216,7 +217,16 @@ if __name__ == "__main__":
 
     selected_datasets = {k: datasets_default[k]
                          for k in args.datasets if k in datasets_default}
-    selected_precomputed = precomputed_default if args.only_precomputed else precomputed_default.copy()
+    
+    # Only include precomputed models if not using --only-precomputed flag
+    # and avoid loading missing files
+    if args.only_precomputed:
+        selected_precomputed = {}
+        for k, v in precomputed_default.items():
+            if os.path.exists(v):
+                selected_precomputed[k] = v
+    else:
+        selected_precomputed = {}
 
     if not args.only_precomputed:
         coefs = load_models(selected_datasets, selected_precomputed)
