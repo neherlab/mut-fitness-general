@@ -32,6 +32,8 @@ datasets_default = {
     "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a_241125/curated/curated_mut_counts.csv",
     "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b_251125/curated/curated_mut_counts.csv",
     "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_141125/curated/curated_mut_counts.csv",
+    # Local test data
+    "HIV-1 pol local": "results_test_hiv_pol_with_rna/curated/curated_mut_counts.csv",
 }
 
 precomputed_default = {
@@ -58,104 +60,132 @@ colors = {
 }
 
 # ----------------------------------------------------------------------
-# LOAD MODELS
+# TRANSFORMATION FUNCTIONS
 # ----------------------------------------------------------------------
 
-
-def load_models(datasets, precomputed_models):
-    """Return dict mapping virus -> mut_type -> coefficients"""
-    coefs = {}
-
-    # Train models from CSVs
-    for name, path in datasets.items():
-        df = load_synonymous_muts(path)
-        model = GeneralLinearModel(included_factors=['local_context'])
-        model.train(df_train=df)
-        coefs[name] = model.W
-
-    # Load precomputed pickled models
-    for name, path in precomputed_models.items():
-        with open(path, 'rb') as f:
-            coefs[name] = pickle.load(f)
-
-    return coefs
-
-
-def compute_oe_intercepts(datasets):
+def transform_to_sum_to_zero(W_ref):
     """
-    Compute O/E for each dataset:
-    O = log(counts) = beta_0 for each mutation type
-    E = log(sum(counts) / 12)
+    Transform coefficients from reference encoding to sum-to-zero encoding.
+    
+    Reference: y = β₀ + β_C·I(C) + β_G·I(G) + β_T·I(T)  [A=0 is reference]
+    Sum-to-zero: y = β₀' + β_A'·I(A) + β_C'·I(C) + β_G'·I(G) + β_T'·I(T)
+                 with constraint: β_A' + β_C' + β_G' + β_T' = 0
+    
+    Args:
+        W_ref: Array [intercept, C_l, G_l, T_l, C_r, G_r, T_r, ...]
+        
+    Returns:
+        Array [intercept', A_l, C_l, G_l, T_l, A_r, C_r, G_r, T_r, ...]
+    """
+    w = np.array(W_ref).flatten()
+    
+    # Extract reference encoding coefficients
+    intercept = w[0]
+    C_l, G_l, T_l = w[1], w[2], w[3]
+    C_r, G_r, T_r = w[4], w[5], w[6]
+    
+    # Compute mean effect (A=0 in reference)
+    mean_l = (C_l + G_l + T_l) / 4
+    mean_r = (C_r + G_r + T_r) / 4
+    
+    # Transform to sum-to-zero encoding
+    A_l_new = -mean_l
+    C_l_new = C_l - mean_l
+    G_l_new = G_l - mean_l
+    T_l_new = T_l - mean_l
+    
+    A_r_new = -mean_r
+    C_r_new = C_r - mean_r
+    G_r_new = G_r - mean_r
+    T_r_new = T_r - mean_r
+    
+    # Adjust intercept to grand mean
+    intercept_adj = intercept + mean_l + mean_r
+    
+    # Build new coefficient array
+    w_new = [intercept_adj, A_l_new, C_l_new, G_l_new, T_l_new, 
+             A_r_new, C_r_new, G_r_new, T_r_new]
+    
+    # Add any additional factors (RNA structure, etc.)
+    if len(w) > 7:
+        w_new.extend(w[7:])
+    
+    return np.array(w_new)
+
+
+def compute_oe_intercepts(coefs_dict):
+    """
+    Compute O/E for intercepts to normalize for sequencing depth.
+    
+    O = log(counts) = intercept (after sum-to-zero transform = grand mean)
+    E = log(mean(counts across all 12 mutation types))
     O/E = O - E (in log space)
     
-    Returns dict: virus -> mut_type -> O/E value
-    """
-    oe_dict = {}
-    
-    for name, path in datasets.items():
-        df = load_synonymous_muts(path)
+    Args:
+        coefs_dict: Dict mapping virus -> mut_type -> coefficients (sum-to-zero)
         
-        # Get observed log counts for each mutation type (from beta_0 values)
-        model = GeneralLinearModel(included_factors=['local_context'])
-        model.train(df_train=df)
-        
-        # Extract beta_0 (intercept) for each mutation type - ensure scalar
-        observed = {mut_type: float(np.array(model.W[mut_type]).flatten()[0]) 
-                    for mut_type in mut_types}
-        
-        # Calculate expected: sum of actual counts / 12, then log
-        # observed values are log(counts), so counts = exp(observed)
-        total_counts = sum(np.exp(observed[mt]) for mt in mut_types)
-        expected_count = total_counts / len(mut_types)
-        expected_log = np.log(expected_count)
-        
-        # O/E in log space = O - E
-        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log) 
-                         for mut_type in mut_types}
-    
-    return oe_dict
-
-
-def compute_oe_from_coefs(coefs_dict):
-    """
-    Compute O/E from already-trained coefficients (for precomputed models).
-    O = beta_0 for each mutation type
-    E = log(sum(exp(beta_0)) / 12)
-    O/E = O - E (in log space)
-    
-    Returns dict: virus -> mut_type -> O/E value
+    Returns:
+        Dict mapping virus -> mut_type -> O/E value
     """
     oe_dict = {}
     
     for name, W_dict in coefs_dict.items():
-        # Extract beta_0 (intercept) for each mutation type
-        observed = {}
-        for mut_type in mut_types:
-            if mut_type in W_dict:
-                vals = np.array(W_dict[mut_type]).flatten()
-                observed[mut_type] = float(vals[0])
+        # Extract intercepts for all mutation types
+        intercepts = {mut_type: float(W_dict[mut_type][0]) 
+                      for mut_type in mut_types if mut_type in W_dict}
         
-        if len(observed) == 0:
+        if len(intercepts) == 0:
             continue
-            
-        # Calculate expected: sum of actual counts / 12, then log
-        # observed values are log(counts), so counts = exp(observed)
-        total_counts = sum(np.exp(observed[mt]) for mt in mut_types if mt in observed)
-        expected_count = total_counts / len(mut_types)
+        
+        # Calculate expected: mean of counts across all mutation types
+        # intercepts are log(counts), so counts = exp(intercept)
+        total_counts = sum(np.exp(intercepts[mt]) for mt in intercepts)
+        expected_count = total_counts / len(intercepts)
         expected_log = np.log(expected_count)
         
         # O/E in log space = O - E
-        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log) 
-                         for mut_type in mut_types if mut_type in observed}
+        oe_dict[name] = {mut_type: intercepts[mut_type] - expected_log 
+                         for mut_type in intercepts}
     
     return oe_dict
+
+
+# ----------------------------------------------------------------------
+# LOAD MODELS
+# ----------------------------------------------------------------------
+
+def load_models(datasets, precomputed_models):
+    """Load and transform models to sum-to-zero encoding"""
+    coefs = {}
+
+    # Train models from CSVs and transform
+    for name, path in datasets.items():
+        df = load_synonymous_muts(path)
+        model = GeneralLinearModel(included_factors=['local_context'])
+        model.train(df_train=df)
+        
+        # Transform each mutation type to sum-to-zero
+        coefs[name] = {}
+        for mut_type, w_ref in model.W.items():
+            coefs[name][mut_type] = transform_to_sum_to_zero(w_ref)
+
+    # Load precomputed pickled models and transform
+    for name, path in precomputed_models.items():
+        with open(path, 'rb') as f:
+            W_ref_dict = pickle.load(f)
+        
+        coefs[name] = {}
+        for mut_type, w_ref in W_ref_dict.items():
+            coefs[name][mut_type] = transform_to_sum_to_zero(w_ref)
+
+    return coefs
 
 
 # ----------------------------------------------------------------------
 # PLOT
 # ----------------------------------------------------------------------
 def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
-    fig, axes = plt.subplots(3, 4, figsize=(16, 10), dpi=200)
+    fig, axes = plt.subplots(3, 4, figsize=(18, 10), dpi=200)
     axes = axes.flatten(order='F')
 
     bar_width = 0.8 / len(coefs_dict)  # dynamic width
@@ -164,16 +194,19 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
 
     for i, mut_type in enumerate(mut_types):
         ax = axes[i]
-        indices = np.arange(7)  # O/E + 6 context positions
+        indices = np.arange(9)  # O/E + 8 context positions (4 left + 4 right)
 
         for j, name in enumerate(all_names):
             W = coefs_dict[name][mut_type]
-            vals = np.array(W).flatten()
             
-            # Replace intercept (beta_0) with O/E
-            oe_value = oe_dict.get(name, {}).get(mut_type, vals[0])
-            # O/E + 6 context terms
-            vals = np.concatenate(([oe_value], vals[-6:]))
+            # Get O/E for this mutation type
+            oe_value = oe_dict.get(name, {}).get(mut_type, W[0])
+            
+            # Extract 8 context coefficients (A, C, G, T for left and right)
+            context_vals = W[1:9]
+            
+            # Combine O/E + 8 context terms
+            vals = np.concatenate(([oe_value], context_vals))
 
             # track global min/max
             min_bar = min(min_bar, np.min(vals))
@@ -189,14 +222,15 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
         if i < 3:
             ax.set_ylabel('coefficient', fontsize=13)
 
+        # X-axis labels with all 4 nucleotides
         x_labels = ["O/E"] + [
             rf"$\beta^{{{b},{pos}}}$" for b, pos in zip(
-                ['C', 'G', 'T', 'C', 'G', 'T'],
-                ["5'", "5'", "5'", "3'", "3'", "3'"]
+                ['A', 'C', 'G', 'T', 'A', 'C', 'G', 'T'],
+                ["5'", "5'", "5'", "5'", "3'", "3'", "3'", "3'"]
             )
         ]
         ax.set_xticks(indices)
-        ax.set_xticklabels(x_labels, rotation=0, ha="center", fontsize=12)
+        ax.set_xticklabels(x_labels, rotation=0, ha="center", fontsize=11)
         ax.tick_params(axis='y', labelsize=11)
 
     # Uniform y-limits
@@ -210,7 +244,9 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
     plt.subplots_adjust(bottom=0.08)
 
     if savepath:
-        os.makedirs(os.path.dirname(savepath), exist_ok=True)    
+        savedir = os.path.dirname(savepath)
+        if savedir:
+            os.makedirs(savedir, exist_ok=True)    
         plt.savefig(savepath, bbox_inches='tight')
     plt.show()
 
@@ -218,10 +254,9 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
 # MAIN + ARGPARSE
 # ----------------------------------------------------------------------
 
-
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Plot mutation context coefficients with O/E normalization.")
+        description="Plot mutation context coefficients in sum-to-zero encoding with O/E normalization.")
 
     parser.add_argument(
         "--out",
@@ -266,15 +301,11 @@ if __name__ == "__main__":
 
     if not args.only_precomputed:
         coefs = load_models(selected_datasets, selected_precomputed)
-        # Compute O/E for datasets loaded from CSV
-        oe_dict = compute_oe_intercepts(selected_datasets)
-        # Also compute O/E for precomputed models from their coefficients
-        oe_precomputed = compute_oe_from_coefs({k: coefs[k] for k in selected_precomputed.keys() if k in coefs})
-        oe_dict.update(oe_precomputed)
     else:
         coefs = load_models({}, selected_precomputed)
-        # Compute O/E from precomputed coefficients
-        oe_dict = compute_oe_from_coefs(coefs)
+
+    # Compute O/E intercepts
+    oe_dict = compute_oe_intercepts(coefs)
 
     plot_mut_coefs(
         coefs,

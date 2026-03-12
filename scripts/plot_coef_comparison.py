@@ -128,7 +128,7 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
     for ax in axes:
         ax.set_ylim(min_bar - 0.2, max_bar + 0.2)
 
-    axes[0].legend(ncol=len(all_names), loc='upper right')
+    axes[0].legend(ncol=len(all_names), loc='upper right', fontsize=8)
     plt.tight_layout()
 
     if savepath:

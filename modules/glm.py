@@ -103,7 +103,7 @@ class GeneralLinearModel:
         present_mut_types = (
             df_test["nt_mutation"].apply(lambda x: x[0] + x[-1]).unique()
         )
-
+        print(present_mut_types)
         # Compute mean squared error separately for every mutation type
         for mut_type in present_mut_types:
             # Define ancestral and mutated nucleotide
@@ -121,10 +121,13 @@ class GeneralLinearModel:
             X = self.create_data_matrix(df_mut_type.copy(), mut_type)
 
             # Compute the mean squared error of the fitted model on the training data
-            preds = X @ self.W[mut_type]
+            preds = (X @ self.W[mut_type]).flatten()
+            log_counts = log_counts.flatten()
             mse = np.mean((log_counts - preds) ** 2)
+            # Null model MSE = variance around the mean
+            prev_mse = np.mean((log_counts - np.mean(log_counts)) ** 2)
             print(f"mse: {mse}")
-            print(f"prev mse: {np.mean((log_counts - (X @ self.W[mut_type]).flatten()) ** 2)}")
+            print(f"base mse (null model): {prev_mse}")
             mean_sq_errs[mut_type] = mse
 
         return mean_sq_errs
