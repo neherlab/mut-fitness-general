@@ -98,6 +98,7 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
         for j, name in enumerate(all_names):
             W = coefs_dict[name][mut_type]
             vals = np.array(W).flatten()
+            
             # intercept + 6 context terms
             vals = np.concatenate(([vals[0]], vals[-6:]))
 

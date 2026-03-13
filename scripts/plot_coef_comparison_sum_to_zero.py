@@ -72,17 +72,19 @@ def transform_to_sum_to_zero(W_ref):
                  with constraint: β_A' + β_C' + β_G' + β_T' = 0
     
     Args:
-        W_ref: Array [intercept, C_l, G_l, T_l, C_r, G_r, T_r, ...]
+        W_ref: Array with structure:
+            - 8 coefs: [intercept, paired, C_l, G_l, T_l, C_r, G_r, T_r]
+            - 9 coefs: [intercept, switch, paired, C_l, G_l, T_l, C_r, G_r, T_r]
         
     Returns:
-        Array [intercept', A_l, C_l, G_l, T_l, A_r, C_r, G_r, T_r, ...]
+        Array [intercept', A_l, C_l, G_l, T_l, A_r, C_r, G_r, T_r, ...extra factors]
     """
     w = np.array(W_ref).flatten()
     
-    # Extract reference encoding coefficients
+    # Extract reference encoding coefficients from last 6 positions
     intercept = w[0]
-    C_l, G_l, T_l = w[1], w[2], w[3]
-    C_r, G_r, T_r = w[4], w[5], w[6]
+    C_l, G_l, T_l = w[-6], w[-5], w[-4]
+    C_r, G_r, T_r = w[-3], w[-2], w[-1]
     
     # Compute mean effect (A=0 in reference)
     mean_l = (C_l + G_l + T_l) / 4
@@ -106,9 +108,9 @@ def transform_to_sum_to_zero(W_ref):
     w_new = [intercept_adj, A_l_new, C_l_new, G_l_new, T_l_new, 
              A_r_new, C_r_new, G_r_new, T_r_new]
     
-    # Add any additional factors (RNA structure, etc.)
+    # Add any additional factors (structure, etc.)
     if len(w) > 7:
-        w_new.extend(w[7:])
+        w_new.extend(w[1:len(w)-6])  # factors between intercept and context
     
     return np.array(w_new)
 
@@ -203,6 +205,7 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
             oe_value = oe_dict.get(name, {}).get(mut_type, W[0])
             
             # Extract 8 context coefficients (A, C, G, T for left and right)
+            # Ignore any additional factors (e.g., RNA structure for SARS-CoV-2)
             context_vals = W[1:9]
             
             # Combine O/E + 8 context terms

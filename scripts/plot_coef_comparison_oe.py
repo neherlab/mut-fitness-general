@@ -172,6 +172,7 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
             
             # Replace intercept (beta_0) with O/E
             oe_value = oe_dict.get(name, {}).get(mut_type, vals[0])
+            
             # O/E + 6 context terms
             vals = np.concatenate(([oe_value], vals[-6:]))
 
