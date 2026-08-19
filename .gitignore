@@ -13,3 +13,6 @@ results*/exploratory_figures/
 results*/
 profiles
 *pdf
+/logs
+configs/subsampling/
+comparison_stats_old_vs_new.csv

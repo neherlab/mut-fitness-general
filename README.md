@@ -37,7 +37,15 @@ The pipeline is managed by [snakemake](https://snakemake.readthedocs.io/) throug
 
 where `n_cpus` is the number of CPU cores you want to use.
 
-The pipeline mainly relies on Python Jupyter notebooks to run. These can be found in the [./notebook](notebook) folder.
+The pipeline stages are implemented as Python scripts under [./scripts](scripts), invoked by the Snakemake rules.
+
+### Example
+A small, self-contained example (a ~200-site slice of real HIV-1 pol data, see [./example/hiv_pol_mini](example/hiv_pol_mini)) runs the full pipeline in under a minute:
+
+    snakemake -c1 --configfile configs/example_hiv_pol.yaml
+
+### Tests
+`pytest tests/` runs the example above end to end and checks the output tables look sane. This is also run in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
 ### Input
 
@@ -48,7 +56,7 @@ The pipeline runs downstream from two files at given paths:
 
 The related links are defined in the [config.yaml](config.yaml) file.
 
-The file containing the nucleotide pairing predictions from [sec structure study] is located at [./data/rna_structure](data/rna_structure/).
+The file containing the nucleotide pairing predictions from RNA secondary structure prediction is located at [./data/rna_structure](data/rna_structure/).
 
 ### Configuration
 Ahead of the computation of mutational fitness effects, predicted and actual mutation counts can be aggregated by defining clusters of clades. This is defined by a dictionary `clade_cluster` in the [config.yaml](config.yaml) file, which can be customized.

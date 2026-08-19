@@ -1,13 +1,9 @@
 import numpy as np
 
-letters = ["A", "C", "G", "T"]
-mut_types = ["AC", "AG", "AT", "CA", "CG", "CT", "GA", "GC", "GT", "TA", "TC", "TG"]
-
 
 class GeneralLinearModel:
-    def __init__(self, included_factors, interacting=False, W=None, tau_squared=None, ridge=0.1):
+    def __init__(self, included_factors, W=None, tau_squared=None, ridge=0.1):
         self.included_factors = included_factors
-        self.interacting = interacting
         self.W = W
         self.tau_squared = tau_squared
         self.ridge = ridge
@@ -41,7 +37,7 @@ class GeneralLinearModel:
 
             regularization_matrix = self.ridge * np.identity(X.shape[1])
             regularization_matrix[0, 0] = 0  # (don't regularize the offset term)
-            w = np.linalg.inv(X.T @ X + regularization_matrix) @ X.T @ log_counts
+            w = np.linalg.solve(X.T @ X + regularization_matrix, X.T @ log_counts)
 
             # Store model parameters
             self.W[mut_type] = w
@@ -52,18 +48,6 @@ class GeneralLinearModel:
 
     def create_data_matrix(self, mut_counts_df, mut_type):
         factor_cols = {}
-
-        # Get global context - REMOVED for mut-fitness-general
-        # if mut_type in ["AT", "CG", "GC"]:
-        #     factor_cols["global_context"] = [
-        #         (mut_counts_df["nt_site"] > 21562).values.astype(int)
-        #     ]
-        # elif mut_type in ["CT"]:
-        #     factor_cols["global_context"] = [
-        #         (mut_counts_df["nt_site"] > 13467).values.astype(int)
-        #     ]
-        # else:
-        #     factor_cols["global_context"] = None
 
         # Get RNA structure (if available)
         if "unpaired" in mut_counts_df.columns:
@@ -79,17 +63,11 @@ class GeneralLinearModel:
         # Offset term
         base = np.full(len(mut_counts_df), 1)
 
-        # Add columns depending on which model is fitted and which factors are included
+        # Add columns depending on which factors are included
         columns = [base]
-        if self.interacting:  # TODO: make this work
-            if mut_type in ["AT", "CG", "GC", "CT"]:
-                columns += self.one_hot_lrp(left_context, right_context, 1)
-            else:
-                columns += self.one_hot_lrp(left_context, right_context, 1)
-        else:
-            for factor in self.included_factors:
-                if factor_cols[factor] is not None:
-                    columns += factor_cols[factor]
+        for factor in self.included_factors:
+            if factor_cols[factor] is not None:
+                columns += factor_cols[factor]
 
         # Compile data matrix
         X = np.column_stack(columns)
@@ -103,7 +81,6 @@ class GeneralLinearModel:
         present_mut_types = (
             df_test["nt_mutation"].apply(lambda x: x[0] + x[-1]).unique()
         )
-        print(present_mut_types)
         # Compute mean squared error separately for every mutation type
         for mut_type in present_mut_types:
             # Define ancestral and mutated nucleotide
@@ -124,10 +101,6 @@ class GeneralLinearModel:
             preds = (X @ self.W[mut_type]).flatten()
             log_counts = log_counts.flatten()
             mse = np.mean((log_counts - preds) ** 2)
-            # Null model MSE = variance around the mean
-            prev_mse = np.mean((log_counts - np.mean(log_counts)) ** 2)
-            print(f"mse: {mse}")
-            print(f"base mse (null model): {prev_mse}")
             mean_sq_errs[mut_type] = mse
 
         return mean_sq_errs
@@ -175,49 +148,4 @@ class GeneralLinearModel:
             sigma["C_r"],
             sigma["G_r"],
             sigma["T_r"],
-        ]
-
-    @staticmethod
-    def one_hot_lrp(context_l, context_r, unpaired):
-        sigma = {}
-        for nt1 in letters:
-            for nt2 in letters:
-                for state in [0, 1]:
-                    st = "p" if state == 0 else "up"
-                    sigma[nt1 + nt2 + "_" + st] = (
-                        (context_l + context_r == nt1 + nt2) * (unpaired == state)
-                    ).astype(int)
-
-        return [
-            sigma["AA_up"],
-            sigma["AC_p"],
-            sigma["AC_up"],
-            sigma["AG_p"],
-            sigma["AG_up"],
-            sigma["AT_p"],
-            sigma["AT_up"],
-            sigma["CA_p"],
-            sigma["CA_up"],
-            sigma["CC_p"],
-            sigma["CC_up"],
-            sigma["CG_p"],
-            sigma["CG_up"],
-            sigma["CT_p"],
-            sigma["CT_up"],
-            sigma["GA_p"],
-            sigma["GA_up"],
-            sigma["GC_p"],
-            sigma["GC_up"],
-            sigma["GG_p"],
-            sigma["GG_up"],
-            sigma["GT_p"],
-            sigma["GT_up"],
-            sigma["TA_p"],
-            sigma["TA_up"],
-            sigma["TC_p"],
-            sigma["TC_up"],
-            sigma["TG_p"],
-            sigma["TG_up"],
-            sigma["TT_p"],
-            sigma["TT_up"],
         ]
