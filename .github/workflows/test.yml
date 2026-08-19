@@ -1,0 +1,22 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  example-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: mut-fitness-env
+          miniforge-version: latest
+
+      - name: Run pipeline on the small example dataset and check outputs
+        shell: bash -l {0}
+        run: pytest tests/ -v
