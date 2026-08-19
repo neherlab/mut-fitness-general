@@ -3,82 +3,14 @@ myDir = os.path.dirname(os.path.abspath(__file__))
 parentDir = os.path.split(myDir)[0]
 if not (sys.path.__contains__(parentDir)):
     sys.path.append(parentDir)
+from modules.coef_plotting import (
+    MUT_TYPES, load_dataset_registry, load_models,
+    build_arg_parser, select_datasets,
+)
 from modules.glm import GeneralLinearModel
 from modules.load import load_synonymous_muts
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-import argparse
-import os
-
-
-# ----------------------------------------------------------------------
-# CONFIG
-# ----------------------------------------------------------------------
-mut_types = ['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG']
-
-datasets_default = {
-    # Dengue E gene
-    "DENV1 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv1_E/curated/curated_mut_counts.csv",
-    "DENV2 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv2_E/curated/curated_mut_counts.csv",
-    "DENV3 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv3_E/curated/curated_mut_counts.csv",
-    "DENV4 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv4_E/curated/curated_mut_counts.csv",
-    # Dengue genome
-    "DENV1 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv1_genome/curated/curated_mut_counts.csv",
-    "DENV2 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv2_genome/curated/curated_mut_counts.csv",
-    "DENV3 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv3_genome/curated/curated_mut_counts.csv",
-    "DENV4 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv4_genome/curated/curated_mut_counts.csv",
-    # Other viruses
-    "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a_241125/curated/curated_mut_counts.csv",
-    "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b_251125/curated/curated_mut_counts.csv",
-    "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_141125/curated/curated_mut_counts.csv",
-}
-
-precomputed_default = {
-    "SARS-CoV-2": "/scicore/home/neher/kuznet0001/data/sars_coefs_dict.pkl"
-}
-
-colors = {
-    # Dengue E gene
-    "DENV1 E": "#cc0000",  # red (poster color)
-    "DENV2 E": "#3498DB",  # blue
-    "DENV3 E": "#2ECC71",  # green
-    "DENV4 E": "#F39C12",  # orange
-    # Dengue genome
-    "DENV1 genome": "#C0392B",  # dark red
-    "DENV2 genome": "#2980B9",  # dark blue
-    "DENV3 genome": "#27AE60",  # dark green
-    "DENV4 genome": "#D68910",  # dark orange
-    # Other viruses - poster colors
-    "RSV A": "#f1c232",     # yellow/gold (poster color)
-    "RSV B": "#6aa84f",     # green (poster color)
-    "HIV-1 pol": "#3d85c6", # blue (poster color)
-    "HIV-1 pol local": "#3d85c6", # blue (same as HIV-1 pol)
-    "SARS-CoV-2": "#8e7cc3" # purple (complementary to poster palette)
-}
-
-# ----------------------------------------------------------------------
-# LOAD MODELS
-# ----------------------------------------------------------------------
-
-
-def load_models(datasets, precomputed_models):
-    """Return dict mapping virus -> mut_type -> coefficients"""
-    coefs = {}
-
-    # Train models from CSVs
-    for name, path in datasets.items():
-        df = load_synonymous_muts(path)
-        model = GeneralLinearModel(included_factors=['local_context'])
-        model.train(df_train=df)
-        coefs[name] = model.W
-
-    # Load precomputed pickled models
-    for name, path in precomputed_models.items():
-        with open(path, 'rb') as f:
-            coefs[name] = pickle.load(f)
-
-    return coefs
 
 
 def compute_oe_intercepts(datasets):
@@ -87,32 +19,32 @@ def compute_oe_intercepts(datasets):
     O = log(counts) = beta_0 for each mutation type
     E = log(sum(counts) / 12)
     O/E = O - E (in log space)
-    
+
     Returns dict: virus -> mut_type -> O/E value
     """
     oe_dict = {}
-    
+
     for name, path in datasets.items():
         df = load_synonymous_muts(path)
-        
+
         # Get observed log counts for each mutation type (from beta_0 values)
         model = GeneralLinearModel(included_factors=['local_context'])
         model.train(df_train=df)
-        
+
         # Extract beta_0 (intercept) for each mutation type - ensure scalar
-        observed = {mut_type: float(np.array(model.W[mut_type]).flatten()[0]) 
-                    for mut_type in mut_types}
-        
+        observed = {mut_type: float(np.array(model.W[mut_type]).flatten()[0])
+                    for mut_type in MUT_TYPES}
+
         # Calculate expected: sum of actual counts / 12, then log
         # observed values are log(counts), so counts = exp(observed)
-        total_counts = sum(np.exp(observed[mt]) for mt in mut_types)
-        expected_count = total_counts / len(mut_types)
+        total_counts = sum(np.exp(observed[mt]) for mt in MUT_TYPES)
+        expected_count = total_counts / len(MUT_TYPES)
         expected_log = np.log(expected_count)
-        
+
         # O/E in log space = O - E
-        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log) 
-                         for mut_type in mut_types}
-    
+        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log)
+                         for mut_type in MUT_TYPES}
+
     return oe_dict
 
 
@@ -122,32 +54,32 @@ def compute_oe_from_coefs(coefs_dict):
     O = beta_0 for each mutation type
     E = log(sum(exp(beta_0)) / 12)
     O/E = O - E (in log space)
-    
+
     Returns dict: virus -> mut_type -> O/E value
     """
     oe_dict = {}
-    
+
     for name, W_dict in coefs_dict.items():
         # Extract beta_0 (intercept) for each mutation type
         observed = {}
-        for mut_type in mut_types:
+        for mut_type in MUT_TYPES:
             if mut_type in W_dict:
                 vals = np.array(W_dict[mut_type]).flatten()
                 observed[mut_type] = float(vals[0])
-        
+
         if len(observed) == 0:
             continue
-            
+
         # Calculate expected: sum of actual counts / 12, then log
         # observed values are log(counts), so counts = exp(observed)
-        total_counts = sum(np.exp(observed[mt]) for mt in mut_types if mt in observed)
-        expected_count = total_counts / len(mut_types)
+        total_counts = sum(np.exp(observed[mt]) for mt in MUT_TYPES if mt in observed)
+        expected_count = total_counts / len(MUT_TYPES)
         expected_log = np.log(expected_count)
-        
+
         # O/E in log space = O - E
-        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log) 
-                         for mut_type in mut_types if mut_type in observed}
-    
+        oe_dict[name] = {mut_type: float(observed[mut_type] - expected_log)
+                         for mut_type in MUT_TYPES if mut_type in observed}
+
     return oe_dict
 
 
@@ -169,10 +101,10 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
         for j, name in enumerate(all_names):
             W = coefs_dict[name][mut_type]
             vals = np.array(W).flatten()
-            
+
             # Replace intercept (beta_0) with O/E
             oe_value = oe_dict.get(name, {}).get(mut_type, vals[0])
-            
+
             # O/E + 6 context terms
             vals = np.concatenate(([oe_value], vals[-6:]))
 
@@ -205,13 +137,13 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
         ax.set_ylim(min_bar - 0.2, max_bar + 0.2)
 
     # Legend below the plots
-    fig.legend(all_names, loc='lower center', ncol=len(all_names), 
+    fig.legend(all_names, loc='lower center', ncol=len(all_names),
                bbox_to_anchor=(0.5, -0.02), fontsize=13, frameon=False)
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.08)
 
     if savepath:
-        os.makedirs(os.path.dirname(savepath), exist_ok=True)    
+        os.makedirs(os.path.dirname(savepath), exist_ok=True)
         plt.savefig(savepath, bbox_inches='tight')
     plt.show()
 
@@ -220,50 +152,13 @@ def plot_mut_coefs(coefs_dict, oe_dict, colors, mut_types, savepath=None):
 # ----------------------------------------------------------------------
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Plot mutation context coefficients with O/E normalization.")
-
-    parser.add_argument(
-        "--out",
-        type=str,
-        default=None,
-        help="Path to save the PDF (optional)."
-    )
-
-    parser.add_argument(
-        "--datasets",
-        nargs="*",
-        default=list(datasets_default.keys()),
-        help="Which datasets to include (default: all)."
-    )
-
-    parser.add_argument(
-        "--only-precomputed",
-        action="store_true",
-        help="Skip training, only load precomputed models."
-    )
-
-    parser.add_argument(
-        "--no-show",
-        action="store_true",
-        help="Do not display the plot interactively."
-    )
-
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = parse_args()
+    parser = build_arg_parser("Plot mutation context coefficients with O/E normalization.")
+    args = parser.parse_args()
+    datasets_default, precomputed_default, colors = load_dataset_registry(args.datasets_file)
 
-    selected_datasets = {k: datasets_default[k]
-                         for k in args.datasets if k in datasets_default}
-    
-    # Filter precomputed models: only include those that exist
-    selected_precomputed = {}
-    for k, v in precomputed_default.items():
-        if k in args.datasets and os.path.exists(v):
-            selected_precomputed[k] = v
+    selected_datasets, selected_precomputed = select_datasets(
+        args, datasets_default, precomputed_default)
 
     if not args.only_precomputed:
         coefs = load_models(selected_datasets, selected_precomputed)
@@ -281,7 +176,7 @@ if __name__ == "__main__":
         coefs,
         oe_dict,
         colors,
-        mut_types,
+        MUT_TYPES,
         savepath=args.out
     )
 

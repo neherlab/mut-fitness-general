@@ -3,81 +3,12 @@ myDir = os.path.dirname(os.path.abspath(__file__))
 parentDir = os.path.split(myDir)[0]
 if not (sys.path.__contains__(parentDir)):
     sys.path.append(parentDir)
-from modules.glm import GeneralLinearModel
-from modules.load import load_synonymous_muts
+from modules.coef_plotting import (
+    MUT_TYPES, load_dataset_registry, load_models,
+    build_arg_parser, select_datasets,
+)
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-import argparse
-import os
-
-
-# ----------------------------------------------------------------------
-# CONFIG
-# ----------------------------------------------------------------------
-mut_types = ['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG']
-
-datasets_default = {
-    # Dengue E gene
-    "DENV1 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv1_E/curated/curated_mut_counts.csv",
-    "DENV2 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv2_E/curated/curated_mut_counts.csv",
-    "DENV3 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv3_E/curated/curated_mut_counts.csv",
-    "DENV4 E": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv4_E/curated/curated_mut_counts.csv",
-    # Dengue genome
-    "DENV1 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv1_genome/curated/curated_mut_counts.csv",
-    "DENV2 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv2_genome/curated/curated_mut_counts.csv",
-    "DENV3 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv3_genome/curated/curated_mut_counts.csv",
-    "DENV4 genome": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_denv4_genome/curated/curated_mut_counts.csv",
-    # Other viruses
-    "RSV A": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_a_241125/curated/curated_mut_counts.csv",
-    "RSV B": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_rsv_b_251125/curated/curated_mut_counts.csv",
-    "HIV-1 pol": "/scicore/home/neher/kuznet0001/mut-fitness-general/results_hiv_pol_141125/curated/curated_mut_counts.csv",
-}
-
-precomputed_default = {
-    "SARS-CoV-2": "/scicore/home/neher/kuznet0001/data/sars_coefs_dict.pkl"
-}
-
-colors = {
-    # Dengue E gene
-    "DENV1 E": "#E74C3C",  # red
-    "DENV2 E": "#3498DB",  # blue
-    "DENV3 E": "#2ECC71",  # green
-    "DENV4 E": "#F39C12",  # orange
-    # Dengue genome
-    "DENV1 genome": "#C0392B",  # dark red
-    "DENV2 genome": "#2980B9",  # dark blue
-    "DENV3 genome": "#27AE60",  # dark green
-    "DENV4 genome": "#D68910",  # dark orange
-    # Other viruses
-    "RSV A": "#9B59B6",     # purple
-    "RSV B": "#E67E22",     # orange
-    "HIV-1 pol": "#1ABC9C", # teal
-    "SARS-CoV-2": "#7F8C8D" # gray
-}
-
-# ----------------------------------------------------------------------
-# LOAD MODELS
-# ----------------------------------------------------------------------
-
-
-def load_models(datasets, precomputed_models):
-    """Return dict mapping virus -> mut_type -> coefficients"""
-    coefs = {}
-
-    # Train models from CSVs
-    for name, path in datasets.items():
-        df = load_synonymous_muts(path)
-        model = GeneralLinearModel(included_factors=['local_context'])
-        model.train(df_train=df)
-        coefs[name] = model.W
-
-    # Load precomputed pickled models
-    for name, path in precomputed_models.items():
-        with open(path, 'rb') as f:
-            coefs[name] = pickle.load(f)
-
-    return coefs
 
 
 # ----------------------------------------------------------------------
@@ -98,7 +29,7 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
         for j, name in enumerate(all_names):
             W = coefs_dict[name][mut_type]
             vals = np.array(W).flatten()
-            
+
             # intercept + 6 context terms
             vals = np.concatenate(([vals[0]], vals[-6:]))
 
@@ -133,7 +64,7 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
     plt.tight_layout()
 
     if savepath:
-        os.makedirs(os.path.dirname(savepath), exist_ok=True)    
+        os.makedirs(os.path.dirname(savepath), exist_ok=True)
         plt.savefig(savepath)
     plt.show()
 
@@ -142,45 +73,13 @@ def plot_mut_coefs(coefs_dict, colors, mut_types, savepath=None):
 # ----------------------------------------------------------------------
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Plot mutation context coefficients.")
-
-    parser.add_argument(
-        "--out",
-        type=str,
-        default=None,
-        help="Path to save the PDF (optional)."
-    )
-
-    parser.add_argument(
-        "--datasets",
-        nargs="*",
-        default=list(datasets_default.keys()),
-        help="Which datasets to include (default: all)."
-    )
-
-    parser.add_argument(
-        "--only-precomputed",
-        action="store_true",
-        help="Skip training, only load precomputed models."
-    )
-
-    parser.add_argument(
-        "--no-show",
-        action="store_true",
-        help="Do not display the plot interactively."
-    )
-
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = parse_args()
+    parser = build_arg_parser("Plot mutation context coefficients.")
+    args = parser.parse_args()
+    datasets_default, precomputed_default, colors = load_dataset_registry(args.datasets_file)
 
-    selected_datasets = {k: datasets_default[k]
-                         for k in args.datasets if k in datasets_default}
-    selected_precomputed = precomputed_default if args.only_precomputed else precomputed_default.copy()
+    selected_datasets, selected_precomputed = select_datasets(
+        args, datasets_default, precomputed_default)
 
     if not args.only_precomputed:
         coefs = load_models(selected_datasets, selected_precomputed)
@@ -190,7 +89,7 @@ if __name__ == "__main__":
     plot_mut_coefs(
         coefs,
         colors,
-        mut_types,
+        MUT_TYPES,
         savepath=args.out
     )
 
