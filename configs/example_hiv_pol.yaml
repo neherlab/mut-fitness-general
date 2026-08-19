@@ -1,0 +1,36 @@
+# Small, self-contained example config -- runs the full pipeline end to end
+# on a ~200-site slice of real HIV-1 pol data (see example/hiv_pol_mini/).
+# Usage: snakemake -c1 --configfile configs/example_hiv_pol.yaml
+
+clade_cluster:
+  {'all': ['root'],
+ }
+
+cluster_founder:
+  all: root
+
+overwrite: true
+
+output_dir: results_example_hiv_pol
+input_dir: "example/hiv_pol_mini"
+
+gene_overlaps:
+  exclude: []
+  retain: []
+
+fitness_pseudocount: 0.5
+
+use_rna_structure: true
+
+genes: ['pol']
+
+clade_synonyms:
+    root: root
+
+aa_fitness_heatmap_minimal_domain: [-6, 2]
+
+min_predicted_count: 1
+
+cluster_corr_min_count: 1
+
+docs_plot_annotations: data/docs_plot_annotations.yaml
